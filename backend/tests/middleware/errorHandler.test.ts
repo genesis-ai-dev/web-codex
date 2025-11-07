@@ -168,4 +168,174 @@ describe('Error Handler Middleware', () => {
 
     process.env.NODE_ENV = originalEnv;
   });
+
+  it('should handle Kubernetes errors', () => {
+    const error: any = new Error('K8s error');
+    error.name = 'HttpError';
+    error.statusCode = 500;
+    error.body = { message: 'Pod not found' };
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(500);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'KUBERNETES_ERROR',
+        message: 'Kubernetes operation failed',
+      })
+    );
+  });
+
+  it('should handle AWS SDK errors - ResourceNotFound', () => {
+    const error: any = new Error('Resource not found');
+    error.name = 'ResourceNotFound';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'AWS_ERROR',
+      })
+    );
+  });
+
+  it('should handle AWS SDK errors - ValidationException', () => {
+    const error: any = new Error('Validation failed');
+    error.name = 'ValidationException';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'AWS_ERROR',
+      })
+    );
+  });
+
+  it('should handle JWT errors - JsonWebTokenError', () => {
+    const error: any = new Error('Invalid token');
+    error.name = 'JsonWebTokenError';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'INVALID_TOKEN',
+        message: 'Invalid or expired token',
+      })
+    );
+  });
+
+  it('should handle JWT errors - TokenExpiredError', () => {
+    const error: any = new Error('Token expired');
+    error.name = 'TokenExpiredError';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'INVALID_TOKEN',
+      })
+    );
+  });
+
+  it('should handle Joi ValidationError', () => {
+    const error: any = new Error('Validation error');
+    error.name = 'ValidationError';
+    error.details = [{ message: 'Field is required', path: ['field'] }];
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+      })
+    );
+  });
+
+  it('should handle MongoDB errors - MongoError', () => {
+    const error: any = new Error('Mongo error');
+    error.name = 'MongoError';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(500);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'DATABASE_ERROR',
+        message: 'Database operation failed',
+      })
+    );
+  });
+
+  it('should handle MongoDB errors - CastError', () => {
+    const error: any = new Error('Cast error');
+    error.name = 'CastError';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(500);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'DATABASE_ERROR',
+      })
+    );
+  });
+
+  it('should handle rate limit errors', () => {
+    const error = new Error('Too many requests from this IP');
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(429);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Rate limit exceeded',
+      })
+    );
+  });
+
+  it('should handle syntax errors', () => {
+    const error: any = new SyntaxError('Unexpected token');
+    (error as any).body = 'invalid json';
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'SYNTAX_ERROR',
+        message: 'Invalid request format',
+      })
+    );
+  });
+
+  it('should include details in AppError response', () => {
+    const details = { userId: 'usr_123', action: 'delete' };
+    const error = new AppError('Operation failed', 400, 'OPERATION_ERROR', details);
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details,
+      })
+    );
+  });
+
+  it('should not include details if not present in AppError', () => {
+    const error = new AppError('Simple error', 400, 'SIMPLE_ERROR');
+
+    errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
+
+    const responseBody = jsonMock.mock.calls[0][0];
+    expect(responseBody).not.toHaveProperty('details');
+  });
 });
