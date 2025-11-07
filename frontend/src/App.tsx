@@ -7,6 +7,9 @@ import { WorkspacesPage } from './pages/WorkspacesPage';
 import { AuthConfig } from './types';
 import './styles/index.css';
 
+// Import useAuth hook here to avoid circular imports
+import { useAuth } from './contexts/AuthContext';
+
 // Auth configuration - in a real app, this would come from environment variables
 const authConfig: AuthConfig = {
   provider: 'cognito', // or 'google'
@@ -152,6 +155,3 @@ const AdminPlaceholder: React.FC = () => {
 };
 
 export default App;
-
-// Import useAuth hook here to avoid circular imports
-import { useAuth } from './contexts/AuthContext';

@@ -175,6 +175,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction }) =>
 
   const handleAction = async (action: 'start' | 'stop' | 'restart' | 'delete') => {
     if (action === 'delete') {
+      // eslint-disable-next-line no-restricted-globals
       if (!confirm(`Are you sure you want to delete "${workspace.name}"? This action cannot be undone.`)) {
         return;
       }
