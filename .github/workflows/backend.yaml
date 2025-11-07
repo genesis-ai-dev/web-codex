@@ -46,8 +46,8 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: ./backend/package-lock.json
+        # cache: 'npm'
+        # cache-dependency-path: ./backend/package-lock.json
     
     - name: Install dependencies
       run: npm ci
