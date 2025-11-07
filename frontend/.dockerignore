@@ -1,0 +1,40 @@
+# Kubernetes files
+*.yaml
+*.yml
+k8s/
+kubernetes/
+
+# Dependencies
+node_modules
+
+# Build outputs
+build
+
+# Git
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+
+# Testing
+coverage
+
+# Documentation
+README.md

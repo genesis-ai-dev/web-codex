@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - JWT_SECRET=dev-secret-key-change-in-production
+      - AWS_REGION=us-west-2
+      - DYNAMODB_REGION=us-west-2
+      - DYNAMODB_TABLE_PREFIX=vscode-platform-dev
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ~/.kube:/home/node/.kube:ro  # Mount kubeconfig for local development
+    depends_on:
+      - redis
+      - dynamodb-local
+    networks:
+      - vscode-platform
+
+  # Redis for session management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vscode-platform
+
+  # Local DynamoDB for development
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "./data"]
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    networks:
+      - vscode-platform
+
+  # DynamoDB Admin UI
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:latest
+    ports:
+      - "8001:8001"
+    environment:
+      - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+    depends_on:
+      - dynamodb-local
+    networks:
+      - vscode-platform
+
+volumes:
+  redis_data:
+  dynamodb_data:
+
+networks:
+  vscode-platform:
+    driver: bridge
