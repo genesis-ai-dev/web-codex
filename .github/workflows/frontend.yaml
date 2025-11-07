@@ -11,6 +11,9 @@ on:
     paths:
     - 'frontend/**'
     - '.github/workflows/frontend.yaml'
+defaults:
+  run:
+    working-directory: ./frontend
 
 env:
   NODE_VERSION: '22'

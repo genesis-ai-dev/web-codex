@@ -12,6 +12,11 @@ on:
     - 'backend/**'
     - '.github/workflows/backend.yaml'
 
+
+defaults:
+  run:
+    working-directory: ./backend
+
 env:
   NODE_VERSION: '22'
   REGISTRY: ghcr.io
