@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
         // Check Kubernetes health
         try {
             // Try to list namespaces as a simple K8s health check
-            await kubernetesService_1.kubernetesService.coreV1Api.listNamespace();
+            await kubernetesService_1.kubernetesService.listNamespaces();
             healthChecks.dependencies.kubernetes = 'healthy';
         }
         catch (error) {
@@ -65,8 +65,15 @@ router.get('/detailed', async (req, res) => {
         environment: process.env.NODE_ENV || 'development',
         uptime: process.uptime(),
         memory: process.memoryUsage(),
-        dependencies: {},
-        performance: {},
+        dependencies: {
+            database: { status: 'checking', responseTime: undefined },
+            kubernetes: { status: 'checking', responseTime: undefined, namespacesCount: undefined },
+        },
+        performance: {
+            database: undefined,
+            kubernetes: undefined,
+            total: undefined,
+        },
     };
     // Database health and performance
     try {
@@ -82,26 +89,27 @@ router.get('/detailed', async (req, res) => {
     catch (error) {
         healthChecks.dependencies.database = {
             status: 'unhealthy',
-            error: error.message,
+            responseTime: undefined,
         };
         logger_1.logger.error('Detailed database health check failed:', error);
     }
     // Kubernetes health and performance
     try {
         const k8sStart = Date.now();
-        const namespaces = await kubernetesService_1.kubernetesService.coreV1Api.listNamespace();
+        const namespaces = await kubernetesService_1.kubernetesService.listNamespaces();
         const k8sTime = Date.now() - k8sStart;
         healthChecks.dependencies.kubernetes = {
             status: 'healthy',
             responseTime: `${k8sTime}ms`,
-            namespacesCount: namespaces.body.items.length,
+            namespacesCount: namespaces.items.length,
         };
         healthChecks.performance.kubernetes = k8sTime;
     }
     catch (error) {
         healthChecks.dependencies.kubernetes = {
             status: 'unhealthy',
-            error: error.message,
+            responseTime: undefined,
+            namespacesCount: undefined,
         };
         logger_1.logger.error('Detailed Kubernetes health check failed:', error);
     }
@@ -129,7 +137,7 @@ router.get('/ready', async (req, res) => {
         // Quick check of critical dependencies
         const checks = await Promise.allSettled([
             dynamodbService_1.dynamodbService.healthCheck(),
-            kubernetesService_1.kubernetesService.coreV1Api.listNamespace(),
+            kubernetesService_1.kubernetesService.listNamespaces(),
         ]);
         const allReady = checks.every(result => result.status === 'fulfilled');
         if (allReady) {

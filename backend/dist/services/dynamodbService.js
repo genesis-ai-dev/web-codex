@@ -344,7 +344,7 @@ class DynamoDBService {
         catch (error) {
             logger_1.logger.error('Failed to create audit log', error);
             // Don't throw error for audit logging failures
-            return item;
+            return null;
         }
     }
     async getAuditLogs(startDate, endDate, userId, action, limit = 20, nextToken) {
@@ -373,7 +373,7 @@ class DynamoDBService {
     async healthCheck() {
         try {
             // Simple check to see if we can access DynamoDB
-            await this.dynamodb.describeTable({ TableName: this.userTable }).promise();
+            await this.ddb.describeTable({ TableName: this.userTable }).promise();
             return true;
         }
         catch (error) {

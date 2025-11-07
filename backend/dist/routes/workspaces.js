@@ -215,8 +215,8 @@ router.delete('/:workspaceId', rateLimiting_1.operationRateLimits.deleteWorkspac
         // Delete Kubernetes resources
         try {
             await kubernetesService_1.kubernetesService.deleteDeployment(namespace, k8sName);
-            await kubernetesService_1.kubernetesService.coreV1Api.deleteNamespacedService(k8sName, namespace);
-            await kubernetesService_1.kubernetesService.coreV1Api.deleteNamespacedPersistentVolumeClaim(`${k8sName}-pvc`, namespace);
+            await kubernetesService_1.kubernetesService.deleteNamespacedService(k8sName, namespace);
+            await kubernetesService_1.kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
         }
         catch (k8sError) {
             logger_1.logger.warn(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);
@@ -321,14 +321,7 @@ router.get('/:workspaceId/metrics', (0, validation_1.validateParams)(validation_
     }
 });
 // Get workspace logs
-router.get('/:workspaceId/logs', (0, validation_1.validateParams)(validation_1.commonSchemas.id), (0, validation_1.validateQuery)({
-    type: 'object',
-    properties: {
-        lines: { type: 'number', minimum: 1, maximum: 1000, default: 100 },
-        since: { type: 'string', format: 'date-time', optional: true },
-    },
-    additionalProperties: false,
-}), async (req, res) => {
+router.get('/:workspaceId/logs', (0, validation_1.validateParams)(validation_1.commonSchemas.id), (0, validation_1.validateQuery)(validation_1.commonSchemas.workspaceLogsQuery), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;

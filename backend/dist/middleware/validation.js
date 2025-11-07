@@ -107,6 +107,10 @@ exports.commonSchemas = {
             pods: joi_1.default.number().integer().min(1).optional(),
         }).optional(),
     }).min(1),
+    groupAndUserId: joi_1.default.object({
+        groupId: joi_1.default.string().required(),
+        userId: joi_1.default.string().required(),
+    }),
     // Workspace validation
     createWorkspace: joi_1.default.object({
         name: joi_1.default.string()
@@ -168,5 +172,9 @@ exports.commonSchemas = {
         limit: joi_1.default.number().integer().min(1).max(100).default(20),
         nextToken: joi_1.default.string().optional(),
         search: joi_1.default.string().min(1).max(100).optional(),
+    }),
+    workspaceLogsQuery: joi_1.default.object({
+        lines: joi_1.default.number().integer().min(1).max(1000).default(100),
+        since: joi_1.default.string().isoDate().optional(),
     }),
 };

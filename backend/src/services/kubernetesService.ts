@@ -41,7 +41,7 @@ class KubernetesService {
         },
       };
 
-      await this.coreV1Api.createNamespace(namespace);
+      await this.coreV1Api.createNamespace({ body: namespace });
       logger.info(`Namespace created: ${name}`);
     } catch (error) {
       if (error.statusCode === 409) {
@@ -51,10 +51,18 @@ class KubernetesService {
       throw new KubernetesError(`Failed to create namespace ${name}`, error);
     }
   }
+  async listNamespaces(): Promise<k8s.V1NamespaceList> {
+    try {
+      const namespaceList = await this.coreV1Api.listNamespace();
+      return namespaceList;
+    } catch (error) {
+      throw new KubernetesError('Failed to list namespaces', error);
+    }
+  }
 
   async deleteNamespace(name: string): Promise<void> {
     try {
-      await this.coreV1Api.deleteNamespace(name);
+      await this.coreV1Api.deleteNamespace({ name });
       logger.info(`Namespace deleted: ${name}`);
     } catch (error) {
       if (error.statusCode === 404) {
@@ -67,7 +75,7 @@ class KubernetesService {
 
   async namespaceExists(name: string): Promise<boolean> {
     try {
-      await this.coreV1Api.readNamespace(name);
+      await this.coreV1Api.readNamespace({ name });
       return true;
     } catch (error) {
       if (error.statusCode === 404) {
@@ -97,7 +105,7 @@ class KubernetesService {
         },
       };
 
-      await this.coreV1Api.createNamespacedResourceQuota(namespace, resourceQuota);
+      await this.coreV1Api.createNamespacedResourceQuota({ namespace, body: resourceQuota });
       logger.info(`Resource quota created for namespace: ${namespace}`);
     } catch (error) {
       throw new KubernetesError(`Failed to create resource quota for ${namespace}`, error);
@@ -107,16 +115,12 @@ class KubernetesService {
   // Pod operations
   async listPods(namespace: string, labelSelector?: string): Promise<PodStatus[]> {
     try {
-      const response = await this.coreV1Api.listNamespacedPod(
+      const response = await this.coreV1Api.listNamespacedPod({
         namespace,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        labelSelector
-      );
+        labelSelector,
+      });
 
-      return response.body.items.map(pod => ({
+      return response.items.map(pod => ({
         name: pod.metadata?.name || '',
         status: pod.status?.phase || 'Unknown',
         ready: pod.status?.conditions?.some(c => c.type === 'Ready' && c.status === 'True') || false,
@@ -130,20 +134,9 @@ class KubernetesService {
 
   async getPodLogs(namespace: string, podName: string, lines: number = 100): Promise<string> {
     try {
-      const response = await this.coreV1Api.readNamespacedPodLog(
-        podName,
-        namespace,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        lines
-      );
+      const response = await this.coreV1Api.readNamespacedPodLog({ name: podName, namespace, tailLines: lines });
 
-      return response.body;
+      return response;
     } catch (error) {
       if (error.statusCode === 404) {
         throw new NotFoundError(`Pod ${podName} not found in namespace ${namespace}`);
@@ -214,7 +207,7 @@ class KubernetesService {
         },
       };
 
-      await this.appsV1Api.createNamespacedDeployment(namespace, deployment);
+      await this.appsV1Api.createNamespacedDeployment({ namespace, body: deployment });
       logger.info(`Deployment created: ${name} in namespace ${namespace}`);
     } catch (error) {
       throw new KubernetesError(`Failed to create deployment ${name}`, error);
@@ -229,18 +222,11 @@ class KubernetesService {
         },
       };
 
-      await this.appsV1Api.patchNamespacedDeploymentScale(
-        name,
+      await this.appsV1Api.patchNamespacedDeploymentScale({
         namespace,
-        patch,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        {
-          headers: { 'Content-Type': 'application/merge-patch+json' },
-        }
-      );
+        name,
+        body: patch,
+      });
 
       logger.info(`Deployment ${name} scaled to ${replicas} replicas`);
     } catch (error) {
@@ -253,7 +239,7 @@ class KubernetesService {
 
   async deleteDeployment(namespace: string, name: string): Promise<void> {
     try {
-      await this.appsV1Api.deleteNamespacedDeployment(name, namespace);
+      await this.appsV1Api.deleteNamespacedDeployment({ name, namespace });
       logger.info(`Deployment deleted: ${name} in namespace ${namespace}`);
     } catch (error) {
       if (error.statusCode === 404) {
@@ -266,8 +252,8 @@ class KubernetesService {
 
   async getDeploymentStatus(namespace: string, name: string): Promise<WorkspaceStatus> {
     try {
-      const response = await this.appsV1Api.readNamespacedDeployment(name, namespace);
-      const deployment = response.body;
+      const response = await this.appsV1Api.readNamespacedDeployment({ name, namespace });
+      const deployment = response;
       
       const readyReplicas = deployment.status?.readyReplicas || 0;
       const replicas = deployment.spec?.replicas || 0;
@@ -317,10 +303,22 @@ class KubernetesService {
         },
       };
 
-      await this.coreV1Api.createNamespacedService(namespace, service);
+      await this.coreV1Api.createNamespacedService({ namespace, body: service });
       logger.info(`Service created: ${name} in namespace ${namespace}`);
     } catch (error) {
       throw new KubernetesError(`Failed to create service ${name}`, error);
+    }
+  }
+  async deleteNamespacedService(name: string, namespace: string): Promise<void> {
+    try {
+      await this.coreV1Api.deleteNamespacedService({ name, namespace });
+      logger.info(`Service deleted: ${name} in namespace ${namespace}`);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        logger.warn(`Service not found for deletion: ${name}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to delete service ${name}`, error);
     }
   }
 
@@ -343,10 +341,22 @@ class KubernetesService {
         },
       };
 
-      await this.coreV1Api.createNamespacedPersistentVolumeClaim(namespace, pvc);
+      await this.coreV1Api.createNamespacedPersistentVolumeClaim({ namespace, body: pvc });
       logger.info(`PVC created: ${name}-pvc in namespace ${namespace}`);
     } catch (error) {
       throw new KubernetesError(`Failed to create PVC for ${name}`, error);
+    }
+  }
+  async deleteNamespacedPVC(name: string, namespace: string): Promise<void> {
+    try {
+      await this.coreV1Api.deleteNamespacedPersistentVolumeClaim({ name, namespace });
+      logger.info(`PVC deleted: ${name} in namespace ${namespace}`);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        logger.warn(`PVC not found for deletion: ${name}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to delete PVC ${name}`, error);
     }
   }
 

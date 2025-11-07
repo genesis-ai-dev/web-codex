@@ -289,14 +289,7 @@ router.post('/:groupId/members',
 
 // Remove group member (admin only)
 router.delete('/:groupId/members/:userId',
-  validateParams({
-    type: 'object',
-    properties: {
-      groupId: { type: 'string', required: true },
-      userId: { type: 'string', required: true },
-    },
-    additionalProperties: false,
-  }),
+  validateParams(commonSchemas.groupAndUserId),
   requireAdmin,
   async (req: AuthenticatedRequest, res: Response) => {
     try {

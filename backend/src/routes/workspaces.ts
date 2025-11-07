@@ -261,8 +261,8 @@ router.delete('/:workspaceId',
       // Delete Kubernetes resources
       try {
         await kubernetesService.deleteDeployment(namespace, k8sName);
-        await kubernetesService.coreV1Api.deleteNamespacedService(k8sName, namespace);
-        await kubernetesService.coreV1Api.deleteNamespacedPersistentVolumeClaim(`${k8sName}-pvc`, namespace);
+        await kubernetesService.deleteNamespacedService(k8sName, namespace);
+        await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
       } catch (k8sError) {
         logger.warn(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);
       }
@@ -395,14 +395,7 @@ router.get('/:workspaceId/metrics',
 // Get workspace logs
 router.get('/:workspaceId/logs',
   validateParams(commonSchemas.id),
-  validateQuery({
-    type: 'object',
-    properties: {
-      lines: { type: 'number', minimum: 1, maximum: 1000, default: 100 },
-      since: { type: 'string', format: 'date-time', optional: true },
-    },
-    additionalProperties: false,
-  }),
+  validateQuery(commonSchemas.workspaceLogsQuery),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const user = req.user!;

@@ -115,6 +115,10 @@ export const commonSchemas = {
       pods: Joi.number().integer().min(1).optional(),
     }).optional(),
   }).min(1),
+  groupAndUserId: Joi.object({
+    groupId: Joi.string().required(),
+    userId: Joi.string().required(),
+  }),
 
   // Workspace validation
   createWorkspace: Joi.object({
@@ -184,5 +188,10 @@ export const commonSchemas = {
     limit: Joi.number().integer().min(1).max(100).default(20),
     nextToken: Joi.string().optional(),
     search: Joi.string().min(1).max(100).optional(),
+  }),
+
+  workspaceLogsQuery: Joi.object({
+    lines: Joi.number().integer().min(1).max(1000).default(100),
+    since: Joi.string().isoDate().optional(),
   }),
 };

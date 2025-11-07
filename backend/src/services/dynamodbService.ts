@@ -6,6 +6,7 @@ import { User, Group, Workspace, AuditLog, DynamoDBItem } from '../types';
 
 class DynamoDBService {
   private dynamodb: AWS.DynamoDB.DocumentClient;
+  private ddb: AWS.DynamoDB;
   private userTable: string;
   private groupTable: string;
   private workspaceTable: string;
@@ -380,7 +381,7 @@ class DynamoDBService {
     } catch (error) {
       logger.error('Failed to create audit log', error);
       // Don't throw error for audit logging failures
-      return item!;
+      return null as any;
     }
   }
 
@@ -421,7 +422,7 @@ class DynamoDBService {
   async healthCheck(): Promise<boolean> {
     try {
       // Simple check to see if we can access DynamoDB
-      await this.dynamodb.describeTable({ TableName: this.userTable }).promise();
+      await this.ddb.describeTable({ TableName: this.userTable }).promise();
       return true;
     } catch (error) {
       logger.error('DynamoDB health check failed:', error);

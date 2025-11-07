@@ -228,14 +228,7 @@ router.post('/:groupId/members', (0, validation_1.validateParams)(validation_1.c
     }
 });
 // Remove group member (admin only)
-router.delete('/:groupId/members/:userId', (0, validation_1.validateParams)({
-    type: 'object',
-    properties: {
-        groupId: { type: 'string', required: true },
-        userId: { type: 'string', required: true },
-    },
-    additionalProperties: false,
-}), auth_1.requireAdmin, async (req, res) => {
+router.delete('/:groupId/members/:userId', (0, validation_1.validateParams)(validation_1.commonSchemas.groupAndUserId), auth_1.requireAdmin, async (req, res) => {
     try {
         const { groupId, userId } = req.params;
         const group = await dynamodbService_1.dynamodbService.getGroup(groupId);
