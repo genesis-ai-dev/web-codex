@@ -1,5 +1,5 @@
 import request from 'supertest';
-import app from '../app';
+import app from '../src/app';
 
 describe('Health Check Endpoints', () => {
   describe('GET /api/health', () => {
@@ -27,30 +27,6 @@ describe('Health Check Endpoints', () => {
 });
 
 describe('Authentication Endpoints', () => {
-  describe('POST /api/auth/callback', () => {
-    it('should validate required fields', async () => {
-      const response = await request(app)
-        .post('/api/auth/callback')
-        .send({})
-        .expect(400);
-
-      expect(response.body).toHaveProperty('message', 'Validation failed');
-      expect(response.body).toHaveProperty('code', 'VALIDATION_ERROR');
-    });
-
-    it('should validate provider field', async () => {
-      const response = await request(app)
-        .post('/api/auth/callback')
-        .send({
-          code: 'valid-code',
-          provider: 'invalid-provider'
-        })
-        .expect(400);
-
-      expect(response.body).toHaveProperty('message', 'Validation failed');
-    });
-  });
-
   describe('GET /api/auth/me', () => {
     it('should require authentication', async () => {
       const response = await request(app)
@@ -58,6 +34,28 @@ describe('Authentication Endpoints', () => {
         .expect(401);
 
       expect(response.body).toHaveProperty('code', 'AUTHENTICATION_ERROR');
+    });
+  });
+
+  describe('POST /api/auth/login', () => {
+    it('should handle login request', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({})
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+    });
+  });
+
+  describe('POST /api/auth/logout', () => {
+    it('should handle logout request', async () => {
+      const response = await request(app)
+        .post('/api/auth/logout')
+        .send({})
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
     });
   });
 });

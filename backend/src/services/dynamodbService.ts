@@ -15,7 +15,8 @@ class DynamoDBService {
   constructor() {
     AWS.config.update({ region: config.dynamodbRegion });
     this.dynamodb = new AWS.DynamoDB.DocumentClient();
-    
+    this.ddb = new AWS.DynamoDB();
+
     // Table names with prefix
     const prefix = config.dynamodbTablePrefix;
     this.userTable = `${prefix}-users`;
