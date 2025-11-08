@@ -18,6 +18,7 @@ export const config = {
   // Database
   dynamodbRegion: process.env.DYNAMODB_REGION || 'us-west-2',
   dynamodbTablePrefix: process.env.DYNAMODB_TABLE_PREFIX || 'vscode-platform',
+  dynamodbEndpoint: process.env.DYNAMODB_ENDPOINT || undefined,
 
   // Redis
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',

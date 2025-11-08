@@ -13,9 +13,16 @@ class DynamoDBService {
   private auditLogTable: string;
 
   constructor() {
-    AWS.config.update({ region: config.dynamodbRegion });
-    this.dynamodb = new AWS.DynamoDB.DocumentClient();
-    this.ddb = new AWS.DynamoDB();
+    const awsConfig: any = { region: config.dynamodbRegion };
+
+    // Use local DynamoDB endpoint if configured (for testing)
+    if (config.dynamodbEndpoint) {
+      awsConfig.endpoint = config.dynamodbEndpoint;
+    }
+
+    AWS.config.update(awsConfig);
+    this.dynamodb = new AWS.DynamoDB.DocumentClient(awsConfig);
+    this.ddb = new AWS.DynamoDB(awsConfig);
 
     // Table names with prefix
     const prefix = config.dynamodbTablePrefix;
@@ -58,7 +65,11 @@ class DynamoDBService {
         Key: { id },
       }).promise();
 
-      return result.Item as User || null;
+      // DynamoDB returns undefined for Item when not found, but could also return empty object
+      if (!result.Item || Object.keys(result.Item).length === 0) {
+        return null;
+      }
+      return result.Item as User;
     } catch (error) {
       throw new DatabaseError(`Failed to get user ${id}`, error);
     }
@@ -101,12 +112,16 @@ class DynamoDBService {
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
+        ConditionExpression: 'attribute_exists(id)',
         ReturnValues: 'ALL_NEW',
       }).promise();
 
       logger.info(`User updated: ${id}`);
       return result.Attributes as User;
     } catch (error) {
+      if (error.code === 'ConditionalCheckFailedException') {
+        throw new NotFoundError(`User ${id} not found`);
+      }
       throw new DatabaseError(`Failed to update user ${id}`, error);
     }
   }
@@ -137,8 +152,8 @@ class DynamoDBService {
 
       const result = await this.dynamodb.scan(params).promise();
 
-      const users = result.Items as User[];
-      const responseNextToken = result.LastEvaluatedKey 
+      const users = (result.Items || []) as User[];
+      const responseNextToken = result.LastEvaluatedKey
         ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
         : undefined;
 
@@ -180,7 +195,11 @@ class DynamoDBService {
         Key: { id },
       }).promise();
 
-      return result.Item as Group || null;
+      // DynamoDB returns undefined for Item when not found, but could also return empty object
+      if (!result.Item || Object.keys(result.Item).length === 0) {
+        return null;
+      }
+      return result.Item as Group;
     } catch (error) {
       throw new DatabaseError(`Failed to get group ${id}`, error);
     }
@@ -206,12 +225,16 @@ class DynamoDBService {
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
+        ConditionExpression: 'attribute_exists(id)',
         ReturnValues: 'ALL_NEW',
       }).promise();
 
       logger.info(`Group updated: ${id}`);
       return result.Attributes as Group;
     } catch (error) {
+      if (error.code === 'ConditionalCheckFailedException') {
+        throw new NotFoundError(`Group ${id} not found`);
+      }
       throw new DatabaseError(`Failed to update group ${id}`, error);
     }
   }
@@ -240,7 +263,7 @@ class DynamoDBService {
         },
       }).promise();
 
-      return result.Items as Group[] || [];
+      return (result.Items || []) as Group[];
     } catch (error) {
       throw new DatabaseError(`Failed to get groups for user ${userId}`, error);
     }
@@ -278,7 +301,11 @@ class DynamoDBService {
         Key: { id },
       }).promise();
 
-      return result.Item as Workspace || null;
+      // DynamoDB returns undefined for Item when not found, but could also return empty object
+      if (!result.Item || Object.keys(result.Item).length === 0) {
+        return null;
+      }
+      return result.Item as Workspace;
     } catch (error) {
       throw new DatabaseError(`Failed to get workspace ${id}`, error);
     }
@@ -307,12 +334,16 @@ class DynamoDBService {
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
+        ConditionExpression: 'attribute_exists(id)',
         ReturnValues: 'ALL_NEW',
       }).promise();
 
       logger.info(`Workspace updated: ${id}`);
       return result.Attributes as Workspace;
     } catch (error) {
+      if (error.code === 'ConditionalCheckFailedException') {
+        throw new NotFoundError(`Workspace ${id} not found`);
+      }
       throw new DatabaseError(`Failed to update workspace ${id}`, error);
     }
   }
@@ -341,7 +372,7 @@ class DynamoDBService {
         },
       }).promise();
 
-      return result.Items as Workspace[] || [];
+      return (result.Items || []) as Workspace[];
     } catch (error) {
       throw new DatabaseError(`Failed to get workspaces for user ${userId}`, error);
     }
@@ -358,7 +389,7 @@ class DynamoDBService {
         },
       }).promise();
 
-      return result.Items as Workspace[] || [];
+      return (result.Items || []) as Workspace[];
     } catch (error) {
       throw new DatabaseError(`Failed to get workspaces for group ${groupId}`, error);
     }
@@ -408,8 +439,8 @@ class DynamoDBService {
 
       const result = await this.dynamodb.scan(params).promise();
 
-      const logs = result.Items as AuditLog[];
-      const responseNextToken = result.LastEvaluatedKey 
+      const logs = (result.Items || []) as AuditLog[];
+      const responseNextToken = result.LastEvaluatedKey
         ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
         : undefined;
 
