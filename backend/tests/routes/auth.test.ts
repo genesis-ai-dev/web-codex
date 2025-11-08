@@ -138,6 +138,9 @@ describe('Auth Routes', () => {
     });
 
     it('should reject invalid token', async () => {
+      const jose = require('jose');
+      jose.jwtVerify.mockRejectedValue(new Error('Invalid token'));
+
       const response = await request(app)
         .get('/api/auth/me')
         .set('Authorization', 'Bearer invalid_token');
