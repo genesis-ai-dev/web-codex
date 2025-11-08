@@ -38,7 +38,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:22-alpine-slim AS production
+FROM node:22-alpine AS production
 
 # Set NODE_ENV
 ENV NODE_ENV=production
