@@ -12,7 +12,7 @@ import {
   ApiError
 } from '../types';
 
-// Helper to get access token from OIDC storage
+// Helper to get ID token from OIDC storage
 const getAccessToken = (): string | null => {
   try {
     // react-oidc-context stores the user in session storage with a key starting with 'oidc.user:'
@@ -21,11 +21,11 @@ const getAccessToken = (): string | null => {
       const userData = sessionStorage.getItem(keys[0]);
       if (userData) {
         const user = JSON.parse(userData);
-        return user.access_token || null;
+        return user.id_token || null;
       }
     }
   } catch (error) {
-    console.warn('Failed to get access token from storage:', error);
+    console.warn('Failed to get ID token from storage:', error);
   }
   return null;
 };
