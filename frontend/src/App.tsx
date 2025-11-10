@@ -12,10 +12,12 @@ import { useAuth } from './contexts/AuthContext';
 
 // Auth configuration - in a real app, this would come from environment variables
 const authConfig: AuthConfig = {
-  provider: 'cognito', // or 'google'
+  authority: process.env.REACT_APP_AUTH_AUTHORITY || 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example',
   clientId: process.env.REACT_APP_AUTH_CLIENT_ID || 'your-client-id',
-  region: process.env.REACT_APP_AUTH_REGION || 'us-east-1',
-  userPoolId: process.env.REACT_APP_USER_POOL_ID || 'us-east-1_example',
+  redirectUri: window.location.origin + '/auth/callback',
+  logoutUri: window.location.origin,
+  scope: 'aws.cognito.signin.user.admin email openid profile',
+  cognitoDomain: process.env.REACT_APP_COGNITO_DOMAIN || 'your-domain.auth.us-east-1.amazoncognito.com',
 };
 
 function App() {
@@ -66,10 +68,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
 // Auth callback handler
 const AuthCallbackPage: React.FC = () => {
+  const { isLoading, isAuthenticated } = useAuth();
+
   React.useEffect(() => {
-    // The AuthProvider will handle the callback automatically
-    // This component just provides a loading state during the process
-  }, []);
+    // Once authenticated, redirect to home
+    if (!isLoading && isAuthenticated) {
+      window.location.href = '/';
+    }
+  }, [isLoading, isAuthenticated]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

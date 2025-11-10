@@ -141,6 +141,6 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         build-args: |
-          REACT_APP_AUTH_CLIENT_ID=${{ secrets.REACT_APP_AUTH_CLIENT_ID }}
-          REACT_APP_AUTH_REGION=${{ secrets.REACT_APP_AUTH_REGION }}
-          REACT_APP_USER_POOL_ID=${{ secrets.REACT_APP_USER_POOL_ID }}
+          REACT_APP_AUTH_AUTHORITY=${{ secrets.COGNITO_AUTHORITY }}
+          REACT_APP_AUTH_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID }}
+          REACT_APP_COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN }}

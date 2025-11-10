@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { AuthProvider as OidcAuthProvider, useAuth as useOidcAuth } from 'react-oidc-context';
 import { User, AuthConfig } from '../types';
-import { authService } from '../services/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
-  refreshToken: () => Promise<void>;
+  getAccessToken: () => string | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,84 +18,79 @@ interface AuthProviderProps {
   config: AuthConfig;
 }
 
-export function AuthProvider({ children, config }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+// Inner component that uses OIDC hooks
+function AuthContextProvider({ children }: { children: ReactNode }) {
+  const oidcAuth = useOidcAuth();
 
-  useEffect(() => {
-    // Initialize auth service with config
-    authService.configure(config);
-    
-    // Check for existing session
-    checkAuthStatus();
-  }, [config]);
-
-  const checkAuthStatus = async () => {
-    try {
-      setIsLoading(true);
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.log('No active session');
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Map OIDC user to our User type
+  const user: User | null = oidcAuth.user
+    ? {
+        id: oidcAuth.user.profile.sub || '',
+        username: oidcAuth.user.profile.preferred_username || oidcAuth.user.profile.email || '',
+        email: oidcAuth.user.profile.email || '',
+        name: oidcAuth.user.profile.name || oidcAuth.user.profile.email || '',
+        groups: (oidcAuth.user.profile['cognito:groups'] as string[]) || [],
+        isAdmin: ((oidcAuth.user.profile['cognito:groups'] as string[]) || []).includes('Admins'),
+      }
+    : null;
 
   const login = async () => {
-    try {
-      setIsLoading(true);
-      await authService.signIn();
-      // After successful login, get user info
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    await oidcAuth.signinRedirect();
   };
 
   const logout = async () => {
-    try {
-      setIsLoading(true);
-      await authService.signOut();
-      setUser(null);
-    } catch (error) {
-      console.error('Logout failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+    // For Cognito, we need to use custom logout URL
+    const cognitoDomain = (window as any).__COGNITO_DOMAIN__;
+    const clientId = oidcAuth.settings.client_id;
+    const logoutUri = oidcAuth.settings.post_logout_redirect_uri || window.location.origin;
+
+    if (cognitoDomain) {
+      // Remove user from local storage
+      await oidcAuth.removeUser();
+      // Redirect to Cognito logout
+      window.location.href = `https://${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+    } else {
+      // Fallback to standard OIDC logout
+      await oidcAuth.signoutRedirect();
     }
   };
 
-  const refreshToken = async () => {
-    try {
-      await authService.refreshSession();
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      setUser(null);
-      throw error;
-    }
+  const getAccessToken = () => {
+    return oidcAuth.user?.access_token;
   };
 
   const value: AuthContextType = {
     user,
-    isLoading,
-    isAuthenticated: !!user,
+    isLoading: oidcAuth.isLoading,
+    isAuthenticated: oidcAuth.isAuthenticated,
     login,
     logout,
-    refreshToken,
+    getAccessToken,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+// Main AuthProvider that wraps OIDC provider
+export function AuthProvider({ children, config }: AuthProviderProps) {
+  // Store cognito domain globally for logout
+  if (config.cognitoDomain) {
+    (window as any).__COGNITO_DOMAIN__ = config.cognitoDomain;
+  }
+
+  const oidcConfig = {
+    authority: config.authority,
+    client_id: config.clientId,
+    redirect_uri: config.redirectUri,
+    post_logout_redirect_uri: config.logoutUri || config.redirectUri.replace('/auth/callback', ''),
+    response_type: 'code',
+    scope: config.scope || 'aws.cognito.signin.user.admin email openid profile',
   };
 
   return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+    <OidcAuthProvider {...oidcConfig}>
+      <AuthContextProvider>{children}</AuthContextProvider>
+    </OidcAuthProvider>
   );
 }
 

@@ -90,10 +90,12 @@ export interface WorkspaceAction {
 }
 
 export interface AuthConfig {
-  provider: 'cognito' | 'google';
+  authority: string; // OIDC authority URL (e.g., 'https://cognito-idp.region.amazonaws.com/user-pool-id')
   clientId: string;
-  region?: string; // for Cognito
-  userPoolId?: string; // for Cognito
+  redirectUri: string;
+  logoutUri?: string;
+  scope?: string;
+  cognitoDomain?: string; // for logout (e.g., 'your-domain.auth.region.amazoncognito.com')
 }
 
 export interface ApiError {

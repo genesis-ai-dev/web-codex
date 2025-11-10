@@ -10,9 +10,9 @@ The frontend uses **build-time environment variables** that are baked into the s
 
 The following build arguments must be provided when building the Docker image:
 
+- `REACT_APP_AUTH_AUTHORITY` - OIDC authority URL (e.g., `https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD`)
 - `REACT_APP_AUTH_CLIENT_ID` - AWS Cognito client ID
-- `REACT_APP_AUTH_REGION` - AWS region (e.g., `ca-west-1`)
-- `REACT_APP_USER_POOL_ID` - AWS Cognito user pool ID
+- `REACT_APP_COGNITO_DOMAIN` - Cognito domain for logout (e.g., `your-domain.auth.ca-west-1.amazoncognito.com`)
 
 ### Building the Docker Image
 
@@ -20,9 +20,9 @@ The following build arguments must be provided when building the Docker image:
 
 ```bash
 docker build \
+  --build-arg REACT_APP_AUTH_AUTHORITY=https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD \
   --build-arg REACT_APP_AUTH_CLIENT_ID=4ffda6ruo971oko0q62fsh5qr8 \
-  --build-arg REACT_APP_AUTH_REGION=ca-west-1 \
-  --build-arg REACT_APP_USER_POOL_ID=ca-west-1_nnIouSRAD \
+  --build-arg REACT_APP_COGNITO_DOMAIN=frontier-rnd-testing-ungg701t.auth.ca-west-1.amazoncognito.com \
   -t ghcr.io/genesis-ai-dev/web-codex/frontend:main \
   .
 ```
@@ -35,9 +35,9 @@ In your CI/CD pipeline, you can use secrets to inject these values:
 - name: Build Docker image
   run: |
     docker build \
+      --build-arg REACT_APP_AUTH_AUTHORITY=${{ secrets.COGNITO_AUTHORITY }} \
       --build-arg REACT_APP_AUTH_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID }} \
-      --build-arg REACT_APP_AUTH_REGION=${{ secrets.AWS_REGION }} \
-      --build-arg REACT_APP_USER_POOL_ID=${{ secrets.COGNITO_USER_POOL_ID }} \
+      --build-arg REACT_APP_COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN }} \
       -t ghcr.io/genesis-ai-dev/web-codex/frontend:${GITHUB_SHA} \
       .
 ```
@@ -85,27 +85,27 @@ For different environments (dev, staging, production), build separate Docker ima
 ```bash
 # Development
 docker build \
+  --build-arg REACT_APP_AUTH_AUTHORITY=https://cognito-idp.ca-west-1.amazonaws.com/<dev-pool-id> \
   --build-arg REACT_APP_AUTH_CLIENT_ID=<dev-client-id> \
-  --build-arg REACT_APP_AUTH_REGION=ca-west-1 \
-  --build-arg REACT_APP_USER_POOL_ID=<dev-pool-id> \
+  --build-arg REACT_APP_COGNITO_DOMAIN=<dev-domain>.auth.ca-west-1.amazoncognito.com \
   -t ghcr.io/genesis-ai-dev/web-codex/frontend:dev \
   .
 
 # Production
 docker build \
+  --build-arg REACT_APP_AUTH_AUTHORITY=https://cognito-idp.ca-west-1.amazonaws.com/<prod-pool-id> \
   --build-arg REACT_APP_AUTH_CLIENT_ID=<prod-client-id> \
-  --build-arg REACT_APP_AUTH_REGION=ca-west-1 \
-  --build-arg REACT_APP_USER_POOL_ID=<prod-pool-id> \
+  --build-arg REACT_APP_COGNITO_DOMAIN=<prod-domain>.auth.ca-west-1.amazoncognito.com \
   -t ghcr.io/genesis-ai-dev/web-codex/frontend:prod \
   .
 ```
 
 ## Current Configuration Values
 
-The current production values (as of the Terraform output) are:
+The current production values are:
 
+- **Authority**: `https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD`
 - **Client ID**: `4ffda6ruo971oko0q62fsh5qr8`
-- **Region**: `ca-west-1`
-- **User Pool ID**: `ca-west-1_nnIouSRAD`
+- **Cognito Domain**: `frontier-rnd-testing-ungg701t.auth.ca-west-1.amazoncognito.com`
 
 **Important**: Store these values securely in your CI/CD secrets manager, not in version control.

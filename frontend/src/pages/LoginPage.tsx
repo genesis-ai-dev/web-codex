@@ -10,27 +10,14 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check for auth callback
-    const code = searchParams.get('code');
-    const error = searchParams.get('error');
-    
-    if (error) {
-      setError('Authentication failed. Please try again.');
-    } else if (code) {
-      // Handle auth callback
-      handleAuthCallback(code);
+    // Check for auth errors from OIDC provider
+    const authError = searchParams.get('error');
+    const errorDescription = searchParams.get('error_description');
+
+    if (authError) {
+      setError(errorDescription || 'Authentication failed. Please try again.');
     }
   }, [searchParams]);
-
-  const handleAuthCallback = async (code: string) => {
-    try {
-      // The auth service will handle the callback
-      await login();
-    } catch (error) {
-      console.error('Auth callback failed:', error);
-      setError('Authentication failed. Please try again.');
-    }
-  };
 
   const handleLogin = async () => {
     try {
