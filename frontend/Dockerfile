@@ -13,6 +13,16 @@ RUN npm ci --legacy-peer-deps
 # Copy source code
 COPY . .
 
+# Build arguments for React environment variables
+ARG REACT_APP_AUTH_CLIENT_ID
+ARG REACT_APP_AUTH_REGION
+ARG REACT_APP_USER_POOL_ID
+
+# Set environment variables for build
+ENV REACT_APP_AUTH_CLIENT_ID=${REACT_APP_AUTH_CLIENT_ID}
+ENV REACT_APP_AUTH_REGION=${REACT_APP_AUTH_REGION}
+ENV REACT_APP_USER_POOL_ID=${REACT_APP_USER_POOL_ID}
+
 # Build the application
 RUN npm run build
 

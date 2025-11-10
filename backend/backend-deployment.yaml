@@ -106,7 +106,7 @@ spec:
         fsGroup: 1001
       containers:
       - name: backend-api
-        image: ghcr.io/genesis-ai-dev/web-codex/backend:main-8447f03
+        image: ghcr.io/genesis-ai-dev/web-codex/backend:main-c3039df
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3001
