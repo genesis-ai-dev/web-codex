@@ -31,19 +31,9 @@ class DynamoDBService {
             logger_1.logger.info('Creating DynamoDB low-level client...');
             this.ddb = new aws_sdk_1.default.DynamoDB(awsConfig);
             logger_1.logger.info('Low-level client created');
-            // Table names with prefix
-            const prefix = config_1.config.dynamodbTablePrefix;
-            logger_1.logger.info(`DynamoDB table prefix: ${prefix}`);
-            this.userTable = `${prefix}-users`;
-            this.groupTable = `${prefix}-groups`;
-            this.workspaceTable = `${prefix}-workspaces`;
-            this.auditLogTable = `${prefix}-audit-logs`;
-            logger_1.logger.info('DynamoDB table names configured:', {
-                userTable: this.userTable,
-                groupTable: this.groupTable,
-                workspaceTable: this.workspaceTable,
-                auditLogTable: this.auditLogTable,
-            });
+            // Single table design
+            this.tableName = config_1.config.dynamodbTableName || `${config_1.config.dynamodbTablePrefix}-main`;
+            logger_1.logger.info(`DynamoDB table name: ${this.tableName}`);
             logger_1.logger.info('DynamoDB service initialized successfully');
         }
         catch (error) {
@@ -58,13 +48,16 @@ class DynamoDBService {
     async createUser(user) {
         try {
             const item = {
+                PK: `USER#${user.id}`,
+                SK: `USER#${user.id}`,
+                EntityType: 'USER',
                 ...user,
                 createdAt: new Date(),
             };
             await this.dynamodb.put({
-                TableName: this.userTable,
+                TableName: this.tableName,
                 Item: item,
-                ConditionExpression: 'attribute_not_exists(id)',
+                ConditionExpression: 'attribute_not_exists(PK)',
             }).promise();
             logger_1.logger.info(`User created: ${user.id}`);
             return item;
@@ -79,8 +72,8 @@ class DynamoDBService {
     async getUser(id) {
         try {
             const result = await this.dynamodb.get({
-                TableName: this.userTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `USER#${id}`, SK: `USER#${id}` },
             }).promise();
             // DynamoDB returns undefined for Item when not found, but could also return empty object
             if (!result.Item || Object.keys(result.Item).length === 0) {
@@ -95,11 +88,11 @@ class DynamoDBService {
     async getUserByEmail(email) {
         try {
             const result = await this.dynamodb.query({
-                TableName: this.userTable,
-                IndexName: 'email-index',
-                KeyConditionExpression: 'email = :email',
+                TableName: this.tableName,
+                IndexName: 'GSI1',
+                KeyConditionExpression: 'GSI1PK = :gsi1pk',
                 ExpressionAttributeValues: {
-                    ':email': email,
+                    ':gsi1pk': `EMAIL#${email}`,
                 },
             }).promise();
             return result.Items?.[0] || null;
@@ -121,12 +114,12 @@ class DynamoDBService {
                 }
             }
             const result = await this.dynamodb.update({
-                TableName: this.userTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `USER#${id}`, SK: `USER#${id}` },
                 UpdateExpression: `SET ${updateExpression.join(', ')}`,
                 ExpressionAttributeNames: expressionAttributeNames,
                 ExpressionAttributeValues: expressionAttributeValues,
-                ConditionExpression: 'attribute_exists(id)',
+                ConditionExpression: 'attribute_exists(PK)',
                 ReturnValues: 'ALL_NEW',
             }).promise();
             logger_1.logger.info(`User updated: ${id}`);
@@ -142,8 +135,8 @@ class DynamoDBService {
     async deleteUser(id) {
         try {
             await this.dynamodb.delete({
-                TableName: this.userTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `USER#${id}`, SK: `USER#${id}` },
             }).promise();
             logger_1.logger.info(`User deleted: ${id}`);
         }
@@ -154,13 +147,18 @@ class DynamoDBService {
     async listUsers(limit = 20, nextToken) {
         try {
             const params = {
-                TableName: this.userTable,
+                TableName: this.tableName,
+                IndexName: 'GSI1',
+                KeyConditionExpression: 'GSI1PK = :entityType',
+                ExpressionAttributeValues: {
+                    ':entityType': 'USER',
+                },
                 Limit: limit,
             };
             if (nextToken) {
                 params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
             }
-            const result = await this.dynamodb.scan(params).promise();
+            const result = await this.dynamodb.query(params).promise();
             const users = (result.Items || []);
             const responseNextToken = result.LastEvaluatedKey
                 ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
@@ -175,14 +173,19 @@ class DynamoDBService {
     async createGroup(group) {
         try {
             const item = {
+                PK: `GROUP#${group.id}`,
+                SK: `GROUP#${group.id}`,
+                EntityType: 'GROUP',
+                GSI1PK: 'GROUP',
+                GSI1SK: group.id,
                 ...group,
                 memberCount: 0,
                 createdAt: new Date(),
             };
             await this.dynamodb.put({
-                TableName: this.groupTable,
+                TableName: this.tableName,
                 Item: item,
-                ConditionExpression: 'attribute_not_exists(id)',
+                ConditionExpression: 'attribute_not_exists(PK)',
             }).promise();
             logger_1.logger.info(`Group created: ${group.id}`);
             return item;
@@ -197,8 +200,8 @@ class DynamoDBService {
     async getGroup(id) {
         try {
             const result = await this.dynamodb.get({
-                TableName: this.groupTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `GROUP#${id}`, SK: `GROUP#${id}` },
             }).promise();
             // DynamoDB returns undefined for Item when not found, but could also return empty object
             if (!result.Item || Object.keys(result.Item).length === 0) {
@@ -223,8 +226,8 @@ class DynamoDBService {
                 }
             }
             const result = await this.dynamodb.update({
-                TableName: this.groupTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `GROUP#${id}`, SK: `GROUP#${id}` },
                 UpdateExpression: `SET ${updateExpression.join(', ')}`,
                 ExpressionAttributeNames: expressionAttributeNames,
                 ExpressionAttributeValues: expressionAttributeValues,
@@ -244,8 +247,8 @@ class DynamoDBService {
     async deleteGroup(id) {
         try {
             await this.dynamodb.delete({
-                TableName: this.groupTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `GROUP#${id}`, SK: `GROUP#${id}` },
             }).promise();
             logger_1.logger.info(`Group deleted: ${id}`);
         }
@@ -256,7 +259,7 @@ class DynamoDBService {
     async getUserGroups(userId) {
         try {
             const result = await this.dynamodb.query({
-                TableName: this.groupTable,
+                TableName: this.tableName,
                 IndexName: 'userId-index',
                 KeyConditionExpression: 'userId = :userId',
                 ExpressionAttributeValues: {
@@ -273,14 +276,19 @@ class DynamoDBService {
     async createWorkspace(workspace) {
         try {
             const item = {
+                PK: `WORKSPACE#${workspace.id}`,
+                SK: `WORKSPACE#${workspace.id}`,
+                EntityType: 'WORKSPACE',
+                GSI1PK: 'WORKSPACE',
+                GSI1SK: workspace.id,
                 ...workspace,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             };
             await this.dynamodb.put({
-                TableName: this.workspaceTable,
+                TableName: this.tableName,
                 Item: item,
-                ConditionExpression: 'attribute_not_exists(id)',
+                ConditionExpression: 'attribute_not_exists(PK)',
             }).promise();
             logger_1.logger.info(`Workspace created: ${workspace.id}`);
             return item;
@@ -295,8 +303,8 @@ class DynamoDBService {
     async getWorkspace(id) {
         try {
             const result = await this.dynamodb.get({
-                TableName: this.workspaceTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
             }).promise();
             // DynamoDB returns undefined for Item when not found, but could also return empty object
             if (!result.Item || Object.keys(result.Item).length === 0) {
@@ -323,12 +331,12 @@ class DynamoDBService {
                 }
             }
             const result = await this.dynamodb.update({
-                TableName: this.workspaceTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
                 UpdateExpression: `SET ${updateExpression.join(', ')}`,
                 ExpressionAttributeNames: expressionAttributeNames,
                 ExpressionAttributeValues: expressionAttributeValues,
-                ConditionExpression: 'attribute_exists(id)',
+                ConditionExpression: 'attribute_exists(PK)',
                 ReturnValues: 'ALL_NEW',
             }).promise();
             logger_1.logger.info(`Workspace updated: ${id}`);
@@ -344,8 +352,8 @@ class DynamoDBService {
     async deleteWorkspace(id) {
         try {
             await this.dynamodb.delete({
-                TableName: this.workspaceTable,
-                Key: { id },
+                TableName: this.tableName,
+                Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
             }).promise();
             logger_1.logger.info(`Workspace deleted: ${id}`);
         }
@@ -356,7 +364,7 @@ class DynamoDBService {
     async getUserWorkspaces(userId) {
         try {
             const result = await this.dynamodb.query({
-                TableName: this.workspaceTable,
+                TableName: this.tableName,
                 IndexName: 'userId-index',
                 KeyConditionExpression: 'userId = :userId',
                 ExpressionAttributeValues: {
@@ -372,7 +380,7 @@ class DynamoDBService {
     async getGroupWorkspaces(groupId) {
         try {
             const result = await this.dynamodb.query({
-                TableName: this.workspaceTable,
+                TableName: this.tableName,
                 IndexName: 'groupId-index',
                 KeyConditionExpression: 'groupId = :groupId',
                 ExpressionAttributeValues: {
@@ -394,7 +402,7 @@ class DynamoDBService {
                 timestamp: new Date(),
             };
             await this.dynamodb.put({
-                TableName: this.auditLogTable,
+                TableName: this.tableName,
                 Item: item,
             }).promise();
             return item;
@@ -410,7 +418,7 @@ class DynamoDBService {
             // Implementation would depend on your GSI structure
             // This is a simplified version
             const params = {
-                TableName: this.auditLogTable,
+                TableName: this.tableName,
                 Limit: limit,
             };
             if (nextToken) {
@@ -431,7 +439,7 @@ class DynamoDBService {
     async healthCheck() {
         try {
             // Simple check to see if we can access DynamoDB
-            await this.ddb.describeTable({ TableName: this.userTable }).promise();
+            await this.ddb.describeTable({ TableName: this.tableName }).promise();
             return true;
         }
         catch (error) {

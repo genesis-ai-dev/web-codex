@@ -7,10 +7,7 @@ import { User, Group, Workspace, AuditLog, DynamoDBItem } from '../types';
 class DynamoDBService {
   private dynamodb: AWS.DynamoDB.DocumentClient;
   private ddb: AWS.DynamoDB;
-  private userTable: string;
-  private groupTable: string;
-  private workspaceTable: string;
-  private auditLogTable: string;
+  private tableName: string;
 
   constructor() {
     try {
@@ -39,21 +36,9 @@ class DynamoDBService {
       this.ddb = new AWS.DynamoDB(awsConfig);
       logger.info('Low-level client created');
 
-      // Table names with prefix
-      const prefix = config.dynamodbTablePrefix;
-      logger.info(`DynamoDB table prefix: ${prefix}`);
-
-      this.userTable = `${prefix}-users`;
-      this.groupTable = `${prefix}-groups`;
-      this.workspaceTable = `${prefix}-workspaces`;
-      this.auditLogTable = `${prefix}-audit-logs`;
-
-      logger.info('DynamoDB table names configured:', {
-        userTable: this.userTable,
-        groupTable: this.groupTable,
-        workspaceTable: this.workspaceTable,
-        auditLogTable: this.auditLogTable,
-      });
+      // Single table design
+      this.tableName = config.dynamodbTableName || `${config.dynamodbTablePrefix}-main`;
+      logger.info(`DynamoDB table name: ${this.tableName}`);
 
       logger.info('DynamoDB service initialized successfully');
     } catch (error) {
@@ -68,19 +53,22 @@ class DynamoDBService {
   // User operations
   async createUser(user: Omit<User, 'createdAt'>): Promise<User> {
     try {
-      const item: User = {
+      const item: any = {
+        PK: `USER#${user.id}`,
+        SK: `USER#${user.id}`,
+        EntityType: 'USER',
         ...user,
         createdAt: new Date(),
       };
 
       await this.dynamodb.put({
-        TableName: this.userTable,
+        TableName: this.tableName,
         Item: item,
-        ConditionExpression: 'attribute_not_exists(id)',
+        ConditionExpression: 'attribute_not_exists(PK)',
       }).promise();
 
       logger.info(`User created: ${user.id}`);
-      return item;
+      return item as User;
     } catch (error) {
       if (error.code === 'ConditionalCheckFailedException') {
         throw new DatabaseError('User already exists');
@@ -92,8 +80,8 @@ class DynamoDBService {
   async getUser(id: string): Promise<User | null> {
     try {
       const result = await this.dynamodb.get({
-        TableName: this.userTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `USER#${id}`, SK: `USER#${id}` },
       }).promise();
 
       // DynamoDB returns undefined for Item when not found, but could also return empty object
@@ -109,11 +97,11 @@ class DynamoDBService {
   async getUserByEmail(email: string): Promise<User | null> {
     try {
       const result = await this.dynamodb.query({
-        TableName: this.userTable,
-        IndexName: 'email-index',
-        KeyConditionExpression: 'email = :email',
+        TableName: this.tableName,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :gsi1pk',
         ExpressionAttributeValues: {
-          ':email': email,
+          ':gsi1pk': `EMAIL#${email}`,
         },
       }).promise();
 
@@ -138,12 +126,12 @@ class DynamoDBService {
       }
 
       const result = await this.dynamodb.update({
-        TableName: this.userTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `USER#${id}`, SK: `USER#${id}` },
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
-        ConditionExpression: 'attribute_exists(id)',
+        ConditionExpression: 'attribute_exists(PK)',
         ReturnValues: 'ALL_NEW',
       }).promise();
 
@@ -160,8 +148,8 @@ class DynamoDBService {
   async deleteUser(id: string): Promise<void> {
     try {
       await this.dynamodb.delete({
-        TableName: this.userTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `USER#${id}`, SK: `USER#${id}` },
       }).promise();
 
       logger.info(`User deleted: ${id}`);
@@ -172,8 +160,13 @@ class DynamoDBService {
 
   async listUsers(limit: number = 20, nextToken?: string): Promise<{ users: User[], nextToken?: string }> {
     try {
-      const params: AWS.DynamoDB.DocumentClient.ScanInput = {
-        TableName: this.userTable,
+      const params: AWS.DynamoDB.DocumentClient.QueryInput = {
+        TableName: this.tableName,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :entityType',
+        ExpressionAttributeValues: {
+          ':entityType': 'USER',
+        },
         Limit: limit,
       };
 
@@ -181,7 +174,7 @@ class DynamoDBService {
         params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
       }
 
-      const result = await this.dynamodb.scan(params).promise();
+      const result = await this.dynamodb.query(params).promise();
 
       const users = (result.Items || []) as User[];
       const responseNextToken = result.LastEvaluatedKey
@@ -197,20 +190,25 @@ class DynamoDBService {
   // Group operations
   async createGroup(group: Omit<Group, 'createdAt' | 'memberCount'>): Promise<Group> {
     try {
-      const item: Group = {
+      const item: any = {
+        PK: `GROUP#${group.id}`,
+        SK: `GROUP#${group.id}`,
+        EntityType: 'GROUP',
+        GSI1PK: 'GROUP',
+        GSI1SK: group.id,
         ...group,
         memberCount: 0,
         createdAt: new Date(),
       };
 
       await this.dynamodb.put({
-        TableName: this.groupTable,
+        TableName: this.tableName,
         Item: item,
-        ConditionExpression: 'attribute_not_exists(id)',
+        ConditionExpression: 'attribute_not_exists(PK)',
       }).promise();
 
       logger.info(`Group created: ${group.id}`);
-      return item;
+      return item as Group;
     } catch (error) {
       if (error.code === 'ConditionalCheckFailedException') {
         throw new DatabaseError('Group already exists');
@@ -222,8 +220,8 @@ class DynamoDBService {
   async getGroup(id: string): Promise<Group | null> {
     try {
       const result = await this.dynamodb.get({
-        TableName: this.groupTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `GROUP#${id}`, SK: `GROUP#${id}` },
       }).promise();
 
       // DynamoDB returns undefined for Item when not found, but could also return empty object
@@ -251,8 +249,8 @@ class DynamoDBService {
       }
 
       const result = await this.dynamodb.update({
-        TableName: this.groupTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `GROUP#${id}`, SK: `GROUP#${id}` },
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
@@ -273,8 +271,8 @@ class DynamoDBService {
   async deleteGroup(id: string): Promise<void> {
     try {
       await this.dynamodb.delete({
-        TableName: this.groupTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `GROUP#${id}`, SK: `GROUP#${id}` },
       }).promise();
 
       logger.info(`Group deleted: ${id}`);
@@ -286,7 +284,7 @@ class DynamoDBService {
   async getUserGroups(userId: string): Promise<Group[]> {
     try {
       const result = await this.dynamodb.query({
-        TableName: this.groupTable,
+        TableName: this.tableName,
         IndexName: 'userId-index',
         KeyConditionExpression: 'userId = :userId',
         ExpressionAttributeValues: {
@@ -303,20 +301,25 @@ class DynamoDBService {
   // Workspace operations
   async createWorkspace(workspace: Omit<Workspace, 'createdAt' | 'updatedAt'>): Promise<Workspace> {
     try {
-      const item: Workspace = {
+      const item: any = {
+        PK: `WORKSPACE#${workspace.id}`,
+        SK: `WORKSPACE#${workspace.id}`,
+        EntityType: 'WORKSPACE',
+        GSI1PK: 'WORKSPACE',
+        GSI1SK: workspace.id,
         ...workspace,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       await this.dynamodb.put({
-        TableName: this.workspaceTable,
+        TableName: this.tableName,
         Item: item,
-        ConditionExpression: 'attribute_not_exists(id)',
+        ConditionExpression: 'attribute_not_exists(PK)',
       }).promise();
 
       logger.info(`Workspace created: ${workspace.id}`);
-      return item;
+      return item as Workspace;
     } catch (error) {
       if (error.code === 'ConditionalCheckFailedException') {
         throw new DatabaseError('Workspace already exists');
@@ -328,8 +331,8 @@ class DynamoDBService {
   async getWorkspace(id: string): Promise<Workspace | null> {
     try {
       const result = await this.dynamodb.get({
-        TableName: this.workspaceTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
       }).promise();
 
       // DynamoDB returns undefined for Item when not found, but could also return empty object
@@ -360,12 +363,12 @@ class DynamoDBService {
       }
 
       const result = await this.dynamodb.update({
-        TableName: this.workspaceTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
-        ConditionExpression: 'attribute_exists(id)',
+        ConditionExpression: 'attribute_exists(PK)',
         ReturnValues: 'ALL_NEW',
       }).promise();
 
@@ -382,8 +385,8 @@ class DynamoDBService {
   async deleteWorkspace(id: string): Promise<void> {
     try {
       await this.dynamodb.delete({
-        TableName: this.workspaceTable,
-        Key: { id },
+        TableName: this.tableName,
+        Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
       }).promise();
 
       logger.info(`Workspace deleted: ${id}`);
@@ -395,7 +398,7 @@ class DynamoDBService {
   async getUserWorkspaces(userId: string): Promise<Workspace[]> {
     try {
       const result = await this.dynamodb.query({
-        TableName: this.workspaceTable,
+        TableName: this.tableName,
         IndexName: 'userId-index',
         KeyConditionExpression: 'userId = :userId',
         ExpressionAttributeValues: {
@@ -412,7 +415,7 @@ class DynamoDBService {
   async getGroupWorkspaces(groupId: string): Promise<Workspace[]> {
     try {
       const result = await this.dynamodb.query({
-        TableName: this.workspaceTable,
+        TableName: this.tableName,
         IndexName: 'groupId-index',
         KeyConditionExpression: 'groupId = :groupId',
         ExpressionAttributeValues: {
@@ -436,7 +439,7 @@ class DynamoDBService {
       };
 
       await this.dynamodb.put({
-        TableName: this.auditLogTable,
+        TableName: this.tableName,
         Item: item,
       }).promise();
 
@@ -460,7 +463,7 @@ class DynamoDBService {
       // Implementation would depend on your GSI structure
       // This is a simplified version
       const params: AWS.DynamoDB.DocumentClient.ScanInput = {
-        TableName: this.auditLogTable,
+        TableName: this.tableName,
         Limit: limit,
       };
 
@@ -485,7 +488,7 @@ class DynamoDBService {
   async healthCheck(): Promise<boolean> {
     try {
       // Simple check to see if we can access DynamoDB
-      await this.ddb.describeTable({ TableName: this.userTable }).promise();
+      await this.ddb.describeTable({ TableName: this.tableName }).promise();
       return true;
     } catch (error) {
       logger.error('DynamoDB health check failed:', error);

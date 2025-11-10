@@ -1,17 +1,11 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: vscode-platform
-  labels:
-    name: vscode-platform
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: backend-api-sa
-  namespace: vscode-platform
-  annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/vscode-platform-backend-role
+  namespace: management-app
+  # Pod Identity - No annotations needed
+  # The IAM role is associated via EKS Pod Identity Association
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -45,13 +39,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: backend-api-sa
-  namespace: vscode-platform
+  namespace: management-app
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: backend-config
-  namespace: vscode-platform
+  namespace: management-app
 data:
   NODE_ENV: "production"
   LOG_LEVEL: "info"
@@ -64,24 +58,28 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: backend-secrets
-  namespace: vscode-platform
+  namespace: management-app
 type: Opaque
 data:
   # Base64 encoded values - replace with actual values
   JWT_SECRET: eW91ci1zdXBlci1zZWNyZXQtand0LWtleS1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==
 stringData:
-  AWS_REGION: "us-west-2"
-  DYNAMODB_REGION: "us-west-2"
-  DYNAMODB_TABLE_PREFIX: "vscode-platform"
-  AWS_COGNITO_USER_POOL_ID: "us-west-2_xxxxxxxxx"
-  AWS_COGNITO_CLIENT_ID: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+  AWS_REGION: "ca-west-1"
+  DYNAMODB_REGION: "ca-west-1"
+  DYNAMODB_TABLE_PREFIX: "frontier-rnd-main"
+  DYNAMODB_TABLE_NAME: "frontier-rnd-main-table"
+  AWS_COGNITO_USER_POOL_ID: "ca-west-1_nnIouSRAD"
+  AWS_COGNITO_CLIENT_ID: "4ffda6ruo971oko0q62fsh5qr8"
+  AWS_COGNITO_CLIENT_SECRET: "14ppi2jubh31eqfvi1urh5ec90l5btscm2q9vkj2ff9ql973u4pd"
+  AWS_COGNITO_ISSUER: "https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD"
+  AWS_COGNITO_JWKS_URL: "https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD/.well-known/jwks.json"
   REDIS_URL: "redis://redis:6379"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend-api
-  namespace: vscode-platform
+  namespace: management-app
   labels:
     app: backend-api
     component: api
@@ -108,7 +106,7 @@ spec:
         fsGroup: 1001
       containers:
       - name: backend-api
-        image: vscode-platform/backend:latest
+        image: ghcr.io/genesis-ai-dev/web-codex/backend:main-8447f03
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3001
@@ -166,7 +164,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: backend-api
-  namespace: vscode-platform
+  namespace: management-app
   labels:
     app: backend-api
 spec:
@@ -183,18 +181,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: backend-api
-  namespace: vscode-platform
-  annotations:
-    kubernetes.io/ingress.class: "alb"
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:ACCOUNT_ID:certificate/CERT_ID
-    alb.ingress.kubernetes.io/tags: Environment=production,Project=vscode-platform
+  namespace: management-app
 spec:
+  ingressClassName: nginx
   rules:
-  - host: api.vscode-platform.example.com
+  - host: loadbalancer.frontierrnd.com
     http:
       paths:
       - path: /api
@@ -209,7 +200,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: backend-api
-  namespace: vscode-platform
+  namespace: management-app
 spec:
   minAvailable: 2
   selector:
@@ -220,7 +211,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: backend-api
-  namespace: vscode-platform
+  namespace: management-app
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -241,3 +232,122 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: management-app
+data:
+  redis.conf: |
+    # Redis configuration
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+    save 900 1
+    save 300 10
+    save 60 10000
+    appendonly yes
+    appendfsync everysec
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: management-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: management-app
+  labels:
+    app: redis
+    component: cache
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
+          name: redis
+          protocol: TCP
+        command:
+          - redis-server
+          - /etc/redis/redis.conf
+        env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          tcpSocket:
+            port: redis
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: redis-config
+          mountPath: /etc/redis
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-data
+      - name: redis-config
+        configMap:
+          name: redis-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: management-app
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis
