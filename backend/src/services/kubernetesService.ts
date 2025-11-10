@@ -12,20 +12,60 @@ class KubernetesService {
   private metricsClient: k8s.Metrics;
 
   constructor() {
-    this.kc = new k8s.KubeConfig();
-    
-    if (config.isProduction) {
-      this.kc.loadFromCluster();
-    } else {
-      this.kc.loadFromDefault();
+    try {
+      logger.info('Initializing Kubernetes service...');
+      logger.info(`Environment: ${config.nodeEnv} (isProduction: ${config.isProduction})`);
+
+      this.kc = new k8s.KubeConfig();
+      logger.info('KubeConfig object created');
+
+      if (config.isProduction) {
+        logger.info('Loading Kubernetes config from cluster (in-cluster mode)');
+        try {
+          this.kc.loadFromCluster();
+          logger.info('Successfully loaded Kubernetes config from cluster');
+        } catch (error) {
+          logger.error('Failed to load Kubernetes config from cluster:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          throw error;
+        }
+      } else {
+        logger.info('Loading Kubernetes config from default location');
+        try {
+          this.kc.loadFromDefault();
+          logger.info('Successfully loaded Kubernetes config from default location');
+        } catch (error) {
+          logger.error('Failed to load Kubernetes config from default location:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          throw error;
+        }
+      }
+
+      logger.info('Creating Kubernetes API clients...');
+      this.coreV1Api = this.kc.makeApiClient(k8s.CoreV1Api);
+      logger.info('CoreV1Api client created');
+
+      this.appsV1Api = this.kc.makeApiClient(k8s.AppsV1Api);
+      logger.info('AppsV1Api client created');
+
+      this.rbacV1Api = this.kc.makeApiClient(k8s.RbacAuthorizationV1Api);
+      logger.info('RbacAuthorizationV1Api client created');
+
+      this.metricsClient = new k8s.Metrics(this.kc);
+      logger.info('Metrics client created');
+
+      logger.info('Kubernetes service initialized successfully');
+    } catch (error) {
+      logger.error('FATAL: Failed to initialize Kubernetes service:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
     }
-
-    this.coreV1Api = this.kc.makeApiClient(k8s.CoreV1Api);
-    this.appsV1Api = this.kc.makeApiClient(k8s.AppsV1Api);
-    this.rbacV1Api = this.kc.makeApiClient(k8s.RbacAuthorizationV1Api);
-    this.metricsClient = new k8s.Metrics(this.kc);
-
-    logger.info('Kubernetes service initialized');
   }
 
   // Namespace operations

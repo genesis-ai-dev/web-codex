@@ -10,15 +10,49 @@ const logger_1 = require("../config/logger");
 const errors_1 = require("../utils/errors");
 class DynamoDBService {
     constructor() {
-        aws_sdk_1.default.config.update({ region: config_1.config.dynamodbRegion });
-        this.dynamodb = new aws_sdk_1.default.DynamoDB.DocumentClient();
-        // Table names with prefix
-        const prefix = config_1.config.dynamodbTablePrefix;
-        this.userTable = `${prefix}-users`;
-        this.groupTable = `${prefix}-groups`;
-        this.workspaceTable = `${prefix}-workspaces`;
-        this.auditLogTable = `${prefix}-audit-logs`;
-        logger_1.logger.info('DynamoDB service initialized');
+        try {
+            logger_1.logger.info('Initializing DynamoDB service...');
+            const awsConfig = { region: config_1.config.dynamodbRegion };
+            logger_1.logger.info(`DynamoDB region: ${config_1.config.dynamodbRegion}`);
+            // Use local DynamoDB endpoint if configured (for testing)
+            if (config_1.config.dynamodbEndpoint) {
+                awsConfig.endpoint = config_1.config.dynamodbEndpoint;
+                logger_1.logger.info(`Using custom DynamoDB endpoint: ${config_1.config.dynamodbEndpoint}`);
+            }
+            else {
+                logger_1.logger.info('Using default AWS DynamoDB endpoint');
+            }
+            logger_1.logger.info('Updating AWS config...');
+            aws_sdk_1.default.config.update(awsConfig);
+            logger_1.logger.info('AWS config updated');
+            logger_1.logger.info('Creating DynamoDB DocumentClient...');
+            this.dynamodb = new aws_sdk_1.default.DynamoDB.DocumentClient(awsConfig);
+            logger_1.logger.info('DocumentClient created');
+            logger_1.logger.info('Creating DynamoDB low-level client...');
+            this.ddb = new aws_sdk_1.default.DynamoDB(awsConfig);
+            logger_1.logger.info('Low-level client created');
+            // Table names with prefix
+            const prefix = config_1.config.dynamodbTablePrefix;
+            logger_1.logger.info(`DynamoDB table prefix: ${prefix}`);
+            this.userTable = `${prefix}-users`;
+            this.groupTable = `${prefix}-groups`;
+            this.workspaceTable = `${prefix}-workspaces`;
+            this.auditLogTable = `${prefix}-audit-logs`;
+            logger_1.logger.info('DynamoDB table names configured:', {
+                userTable: this.userTable,
+                groupTable: this.groupTable,
+                workspaceTable: this.workspaceTable,
+                auditLogTable: this.auditLogTable,
+            });
+            logger_1.logger.info('DynamoDB service initialized successfully');
+        }
+        catch (error) {
+            logger_1.logger.error('FATAL: Failed to initialize DynamoDB service:', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+            throw error;
+        }
     }
     // User operations
     async createUser(user) {
@@ -48,7 +82,11 @@ class DynamoDBService {
                 TableName: this.userTable,
                 Key: { id },
             }).promise();
-            return result.Item || null;
+            // DynamoDB returns undefined for Item when not found, but could also return empty object
+            if (!result.Item || Object.keys(result.Item).length === 0) {
+                return null;
+            }
+            return result.Item;
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get user ${id}`, error);
@@ -88,12 +126,16 @@ class DynamoDBService {
                 UpdateExpression: `SET ${updateExpression.join(', ')}`,
                 ExpressionAttributeNames: expressionAttributeNames,
                 ExpressionAttributeValues: expressionAttributeValues,
+                ConditionExpression: 'attribute_exists(id)',
                 ReturnValues: 'ALL_NEW',
             }).promise();
             logger_1.logger.info(`User updated: ${id}`);
             return result.Attributes;
         }
         catch (error) {
+            if (error.code === 'ConditionalCheckFailedException') {
+                throw new errors_1.NotFoundError(`User ${id} not found`);
+            }
             throw new errors_1.DatabaseError(`Failed to update user ${id}`, error);
         }
     }
@@ -119,7 +161,7 @@ class DynamoDBService {
                 params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
             }
             const result = await this.dynamodb.scan(params).promise();
-            const users = result.Items;
+            const users = (result.Items || []);
             const responseNextToken = result.LastEvaluatedKey
                 ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
                 : undefined;
@@ -158,7 +200,11 @@ class DynamoDBService {
                 TableName: this.groupTable,
                 Key: { id },
             }).promise();
-            return result.Item || null;
+            // DynamoDB returns undefined for Item when not found, but could also return empty object
+            if (!result.Item || Object.keys(result.Item).length === 0) {
+                return null;
+            }
+            return result.Item;
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get group ${id}`, error);
@@ -182,12 +228,16 @@ class DynamoDBService {
                 UpdateExpression: `SET ${updateExpression.join(', ')}`,
                 ExpressionAttributeNames: expressionAttributeNames,
                 ExpressionAttributeValues: expressionAttributeValues,
+                ConditionExpression: 'attribute_exists(id)',
                 ReturnValues: 'ALL_NEW',
             }).promise();
             logger_1.logger.info(`Group updated: ${id}`);
             return result.Attributes;
         }
         catch (error) {
+            if (error.code === 'ConditionalCheckFailedException') {
+                throw new errors_1.NotFoundError(`Group ${id} not found`);
+            }
             throw new errors_1.DatabaseError(`Failed to update group ${id}`, error);
         }
     }
@@ -213,7 +263,7 @@ class DynamoDBService {
                     ':userId': userId,
                 },
             }).promise();
-            return result.Items || [];
+            return (result.Items || []);
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get groups for user ${userId}`, error);
@@ -248,7 +298,11 @@ class DynamoDBService {
                 TableName: this.workspaceTable,
                 Key: { id },
             }).promise();
-            return result.Item || null;
+            // DynamoDB returns undefined for Item when not found, but could also return empty object
+            if (!result.Item || Object.keys(result.Item).length === 0) {
+                return null;
+            }
+            return result.Item;
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get workspace ${id}`, error);
@@ -274,12 +328,16 @@ class DynamoDBService {
                 UpdateExpression: `SET ${updateExpression.join(', ')}`,
                 ExpressionAttributeNames: expressionAttributeNames,
                 ExpressionAttributeValues: expressionAttributeValues,
+                ConditionExpression: 'attribute_exists(id)',
                 ReturnValues: 'ALL_NEW',
             }).promise();
             logger_1.logger.info(`Workspace updated: ${id}`);
             return result.Attributes;
         }
         catch (error) {
+            if (error.code === 'ConditionalCheckFailedException') {
+                throw new errors_1.NotFoundError(`Workspace ${id} not found`);
+            }
             throw new errors_1.DatabaseError(`Failed to update workspace ${id}`, error);
         }
     }
@@ -305,7 +363,7 @@ class DynamoDBService {
                     ':userId': userId,
                 },
             }).promise();
-            return result.Items || [];
+            return (result.Items || []);
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get workspaces for user ${userId}`, error);
@@ -321,7 +379,7 @@ class DynamoDBService {
                     ':groupId': groupId,
                 },
             }).promise();
-            return result.Items || [];
+            return (result.Items || []);
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get workspaces for group ${groupId}`, error);
@@ -359,7 +417,7 @@ class DynamoDBService {
                 params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
             }
             const result = await this.dynamodb.scan(params).promise();
-            const logs = result.Items;
+            const logs = (result.Items || []);
             const responseNextToken = result.LastEvaluatedKey
                 ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
                 : undefined;

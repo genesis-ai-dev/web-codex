@@ -51,6 +51,19 @@ export const logger = winston.createLogger({
 });
 
 // Handle uncaught exceptions and rejections
+// Always log to console, but also to files in production
+logger.exceptions.handle(
+  new winston.transports.Console({
+    format: config.isProduction ? logFormat : consoleFormat,
+  })
+);
+
+logger.rejections.handle(
+  new winston.transports.Console({
+    format: config.isProduction ? logFormat : consoleFormat,
+  })
+);
+
 if (config.isProduction) {
   logger.exceptions.handle(
     new winston.transports.File({ filename: 'logs/exceptions.log' })

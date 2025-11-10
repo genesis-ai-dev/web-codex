@@ -13,25 +13,56 @@ class DynamoDBService {
   private auditLogTable: string;
 
   constructor() {
-    const awsConfig: any = { region: config.dynamodbRegion };
+    try {
+      logger.info('Initializing DynamoDB service...');
 
-    // Use local DynamoDB endpoint if configured (for testing)
-    if (config.dynamodbEndpoint) {
-      awsConfig.endpoint = config.dynamodbEndpoint;
+      const awsConfig: any = { region: config.dynamodbRegion };
+      logger.info(`DynamoDB region: ${config.dynamodbRegion}`);
+
+      // Use local DynamoDB endpoint if configured (for testing)
+      if (config.dynamodbEndpoint) {
+        awsConfig.endpoint = config.dynamodbEndpoint;
+        logger.info(`Using custom DynamoDB endpoint: ${config.dynamodbEndpoint}`);
+      } else {
+        logger.info('Using default AWS DynamoDB endpoint');
+      }
+
+      logger.info('Updating AWS config...');
+      AWS.config.update(awsConfig);
+      logger.info('AWS config updated');
+
+      logger.info('Creating DynamoDB DocumentClient...');
+      this.dynamodb = new AWS.DynamoDB.DocumentClient(awsConfig);
+      logger.info('DocumentClient created');
+
+      logger.info('Creating DynamoDB low-level client...');
+      this.ddb = new AWS.DynamoDB(awsConfig);
+      logger.info('Low-level client created');
+
+      // Table names with prefix
+      const prefix = config.dynamodbTablePrefix;
+      logger.info(`DynamoDB table prefix: ${prefix}`);
+
+      this.userTable = `${prefix}-users`;
+      this.groupTable = `${prefix}-groups`;
+      this.workspaceTable = `${prefix}-workspaces`;
+      this.auditLogTable = `${prefix}-audit-logs`;
+
+      logger.info('DynamoDB table names configured:', {
+        userTable: this.userTable,
+        groupTable: this.groupTable,
+        workspaceTable: this.workspaceTable,
+        auditLogTable: this.auditLogTable,
+      });
+
+      logger.info('DynamoDB service initialized successfully');
+    } catch (error) {
+      logger.error('FATAL: Failed to initialize DynamoDB service:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
     }
-
-    AWS.config.update(awsConfig);
-    this.dynamodb = new AWS.DynamoDB.DocumentClient(awsConfig);
-    this.ddb = new AWS.DynamoDB(awsConfig);
-
-    // Table names with prefix
-    const prefix = config.dynamodbTablePrefix;
-    this.userTable = `${prefix}-users`;
-    this.groupTable = `${prefix}-groups`;
-    this.workspaceTable = `${prefix}-workspaces`;
-    this.auditLogTable = `${prefix}-audit-logs`;
-
-    logger.info('DynamoDB service initialized');
   }
 
   // User operations

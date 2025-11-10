@@ -38,6 +38,13 @@ exports.logger = winston_1.default.createLogger({
     exitOnError: false,
 });
 // Handle uncaught exceptions and rejections
+// Always log to console, but also to files in production
+exports.logger.exceptions.handle(new winston_1.default.transports.Console({
+    format: config_1.config.isProduction ? logFormat : consoleFormat,
+}));
+exports.logger.rejections.handle(new winston_1.default.transports.Console({
+    format: config_1.config.isProduction ? logFormat : consoleFormat,
+}));
 if (config_1.config.isProduction) {
     exports.logger.exceptions.handle(new winston_1.default.transports.File({ filename: 'logs/exceptions.log' }));
     exports.logger.rejections.handle(new winston_1.default.transports.File({ filename: 'logs/rejections.log' }));

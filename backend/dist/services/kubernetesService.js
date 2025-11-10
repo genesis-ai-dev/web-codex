@@ -41,18 +41,57 @@ const errors_1 = require("../utils/errors");
 const types_1 = require("../types");
 class KubernetesService {
     constructor() {
-        this.kc = new k8s.KubeConfig();
-        if (config_1.config.isProduction) {
-            this.kc.loadFromCluster();
+        try {
+            logger_1.logger.info('Initializing Kubernetes service...');
+            logger_1.logger.info(`Environment: ${config_1.config.nodeEnv} (isProduction: ${config_1.config.isProduction})`);
+            this.kc = new k8s.KubeConfig();
+            logger_1.logger.info('KubeConfig object created');
+            if (config_1.config.isProduction) {
+                logger_1.logger.info('Loading Kubernetes config from cluster (in-cluster mode)');
+                try {
+                    this.kc.loadFromCluster();
+                    logger_1.logger.info('Successfully loaded Kubernetes config from cluster');
+                }
+                catch (error) {
+                    logger_1.logger.error('Failed to load Kubernetes config from cluster:', {
+                        error: error instanceof Error ? error.message : String(error),
+                        stack: error instanceof Error ? error.stack : undefined,
+                    });
+                    throw error;
+                }
+            }
+            else {
+                logger_1.logger.info('Loading Kubernetes config from default location');
+                try {
+                    this.kc.loadFromDefault();
+                    logger_1.logger.info('Successfully loaded Kubernetes config from default location');
+                }
+                catch (error) {
+                    logger_1.logger.error('Failed to load Kubernetes config from default location:', {
+                        error: error instanceof Error ? error.message : String(error),
+                        stack: error instanceof Error ? error.stack : undefined,
+                    });
+                    throw error;
+                }
+            }
+            logger_1.logger.info('Creating Kubernetes API clients...');
+            this.coreV1Api = this.kc.makeApiClient(k8s.CoreV1Api);
+            logger_1.logger.info('CoreV1Api client created');
+            this.appsV1Api = this.kc.makeApiClient(k8s.AppsV1Api);
+            logger_1.logger.info('AppsV1Api client created');
+            this.rbacV1Api = this.kc.makeApiClient(k8s.RbacAuthorizationV1Api);
+            logger_1.logger.info('RbacAuthorizationV1Api client created');
+            this.metricsClient = new k8s.Metrics(this.kc);
+            logger_1.logger.info('Metrics client created');
+            logger_1.logger.info('Kubernetes service initialized successfully');
         }
-        else {
-            this.kc.loadFromDefault();
+        catch (error) {
+            logger_1.logger.error('FATAL: Failed to initialize Kubernetes service:', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+            throw error;
         }
-        this.coreV1Api = this.kc.makeApiClient(k8s.CoreV1Api);
-        this.appsV1Api = this.kc.makeApiClient(k8s.AppsV1Api);
-        this.rbacV1Api = this.kc.makeApiClient(k8s.RbacAuthorizationV1Api);
-        this.metricsClient = new k8s.Metrics(this.kc);
-        logger_1.logger.info('Kubernetes service initialized');
     }
     // Namespace operations
     async createNamespace(name, labels = {}) {
