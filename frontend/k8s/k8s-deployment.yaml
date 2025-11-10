@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/genesis-ai-dev/web-codex/frontend:main
+        image: ghcr.io/genesis-ai-dev/web-codex/frontend:main-26652cc
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80

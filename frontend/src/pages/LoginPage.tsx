@@ -114,7 +114,7 @@ export const LoginPage: React.FC = () => {
               </Button>
 
               {/* Google OAuth Login */}
-              <Button
+              {/* <Button
                 onClick={handleLogin}
                 variant="secondary"
                 className="w-full"
@@ -129,7 +129,7 @@ export const LoginPage: React.FC = () => {
                 }
               >
                 Continue with Google
-              </Button>
+              </Button> */}
             </div>
 
             <div className="text-center">

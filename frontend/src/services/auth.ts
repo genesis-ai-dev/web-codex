@@ -23,7 +23,7 @@ class AuthService {
 
   private async signInWithCognito(): Promise<void> {
     // For Cognito, we'll use the Hosted UI
-    const cognitoUrl = `https://${this.config!.userPoolId}.auth.${this.config!.region}.amazoncognito.com/login`;
+    const cognitoUrl = `https://cognito-idp.${this.config!.region}.amazoncognito.com/${this.config!.userPoolId}`;
     const params = new URLSearchParams({
       client_id: this.config!.clientId,
       response_type: 'code',
