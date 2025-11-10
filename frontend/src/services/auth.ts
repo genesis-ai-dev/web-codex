@@ -23,11 +23,11 @@ class AuthService {
 
   private async signInWithCognito(): Promise<void> {
     // For Cognito, we'll use the Hosted UI
-    const cognitoUrl = `https://cognito-idp.${this.config!.region}.amazoncognito.com/${this.config!.userPoolId}`;
+    const cognitoUrl = `https://cognito-idp.${this.config!.region}.amazonaws.com/${this.config!.userPoolId}`;
     const params = new URLSearchParams({
       client_id: this.config!.clientId,
       response_type: 'code',
-      scope: 'openid email profile',
+      scope: 'aws.cognito.signin.user.admin email openid profile',
       redirect_uri: window.location.origin + '/auth/callback',
     });
 
