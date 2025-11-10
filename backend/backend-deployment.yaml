@@ -69,7 +69,7 @@ stringData:
   DYNAMODB_TABLE_PREFIX: "frontier-rnd-main"
   DYNAMODB_TABLE_NAME: "frontier-rnd-main-table"
   AWS_COGNITO_USER_POOL_ID: "ca-west-1_nnIouSRAD"
-  AWS_COGNITO_CLIENT_ID: "4ffda6ruo971oko0q62fsh5qr8"
+  AWS_COGNITO_CLIENT_ID: "232hjhhhiqk099p0bbjhr2fk14"
   AWS_COGNITO_CLIENT_SECRET: "14ppi2jubh31eqfvi1urh5ec90l5btscm2q9vkj2ff9ql973u4pd"
   AWS_COGNITO_ISSUER: "https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD"
   AWS_COGNITO_JWKS_URL: "https://cognito-idp.ca-west-1.amazonaws.com/ca-west-1_nnIouSRAD/.well-known/jwks.json"
