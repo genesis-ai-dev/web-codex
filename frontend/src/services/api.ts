@@ -1,17 +1,34 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import { 
-  User, 
-  Group, 
-  Workspace, 
-  CreateWorkspaceRequest, 
-  WorkspaceAction, 
-  DashboardStats, 
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import {
+  User,
+  Group,
+  Workspace,
+  CreateWorkspaceRequest,
+  WorkspaceAction,
+  DashboardStats,
   ResourceUsage,
   PaginatedResponse,
   AuditLog,
-  ApiError 
+  ApiError
 } from '../types';
-import { authService } from './auth';
+
+// Helper to get access token from OIDC storage
+const getAccessToken = (): string | null => {
+  try {
+    // react-oidc-context stores the user in session storage with a key starting with 'oidc.user:'
+    const keys = Object.keys(sessionStorage).filter(key => key.startsWith('oidc.user:'));
+    if (keys.length > 0) {
+      const userData = sessionStorage.getItem(keys[0]);
+      if (userData) {
+        const user = JSON.parse(userData);
+        return user.access_token || null;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to get access token from storage:', error);
+  }
+  return null;
+};
 
 class ApiService {
   private client: AxiosInstance;
@@ -23,8 +40,8 @@ class ApiService {
     });
 
     // Add auth token to requests
-    this.client.interceptors.request.use((config) => {
-      const token = authService.getAuthToken();
+    this.client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+      const token = getAccessToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -36,19 +53,8 @@ class ApiService {
       (response) => response,
       async (error: AxiosError) => {
         if (error.response?.status === 401) {
-          // Try to refresh token
-          try {
-            await authService.refreshSession();
-            // Retry the original request
-            if (error.config) {
-              const token = authService.getAuthToken();
-              error.config.headers.Authorization = `Bearer ${token}`;
-              return this.client.request(error.config);
-            }
-          } catch (refreshError) {
-            // Refresh failed, redirect to login
-            window.location.href = '/login';
-          }
+          // Token expired or invalid, redirect to login
+          window.location.href = '/login';
         }
         return Promise.reject(this.handleApiError(error));
       }
