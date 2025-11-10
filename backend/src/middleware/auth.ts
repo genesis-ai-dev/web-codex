@@ -7,10 +7,10 @@ import { AuthenticationError, AuthorizationError } from '../utils/errors';
 import { AuthenticatedRequest, User, JwtPayload } from '../types';
 import { userService } from '../services/userService';
 
-// Initialize Cognito JWT verifier
+// Initialize Cognito JWT verifier for access tokens
 const cognitoVerifier = config.cognitoUserPoolId ? CognitoJwtVerifier.create({
   userPoolId: config.cognitoUserPoolId,
-  tokenUse: 'id',
+  tokenUse: 'access',
   clientId: config.cognitoClientId,
 }) : null;
 
