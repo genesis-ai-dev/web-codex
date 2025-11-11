@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/codex-logo-2024.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="75607040-4809-4200-9c5b-f8ba2eee299c"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+		<link rel="modulepreload" href="/_app/immutable/entry/start.fa5cb139.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/ac4719f6.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/b326b133.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/5a9dafa0.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.c7c20e8a.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/37b1e884.js">
+</head>
+
+<body data-sveltekit-preload-data="hover">
+  <div style="display: contents">
+			<script>
+				{
+					__sveltekit_1qc5nzt = {
+						base: ""
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/_app/immutable/entry/start.fa5cb139.js"),
+						import("/_app/immutable/entry/app.c7c20e8a.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+</body>
+
+</html>
