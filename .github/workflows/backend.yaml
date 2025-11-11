@@ -165,12 +165,11 @@ jobs:
           aws eks update-kubeconfig --region ca-west-1 --name frontier-rnd-cluster
       - name: get sha
         id: vars
-        run: echo "::set-output name=sha::$(echo ${GITHUB_SHA} | cut -c1-7)"
-      
+        run: echo "sha$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
       
       - name: Update deployment image
         run: |
-          kubectl set image deployment/backend-api backend-api=main-${{ steps.vars.outputs.sha }} -n management-app
+          kubectl set image deployment/backend-api backend-api=${{env.REGISTRY}}/${{env.IMAGE_NAME}}:main-${{ steps.vars.outputs.sha }} -n management-app
 
 #   # Notification
 #   notify:
