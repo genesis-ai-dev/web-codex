@@ -51,6 +51,8 @@ class DynamoDBService {
                 PK: `USER#${user.id}`,
                 SK: `USER#${user.id}`,
                 EntityType: 'USER',
+                GSI1PK: `EMAIL#${user.email}`,
+                GSI1SK: `USER#${user.id}`,
                 ...user,
                 createdAt: new Date(),
             };
@@ -258,15 +260,16 @@ class DynamoDBService {
     }
     async getUserGroups(userId) {
         try {
-            const result = await this.dynamodb.query({
-                TableName: this.tableName,
-                IndexName: 'userId-index',
-                KeyConditionExpression: 'userId = :userId',
-                ExpressionAttributeValues: {
-                    ':userId': userId,
-                },
-            }).promise();
-            return (result.Items || []);
+            // Get the user to access their groups array
+            const user = await this.getUser(userId);
+            if (!user || !user.groups || user.groups.length === 0) {
+                return [];
+            }
+            // Fetch all groups the user belongs to
+            const groupPromises = user.groups.map(groupId => this.getGroup(groupId));
+            const groups = await Promise.all(groupPromises);
+            // Filter out any null results (in case a group was deleted)
+            return groups.filter(g => g !== null);
         }
         catch (error) {
             throw new errors_1.DatabaseError(`Failed to get groups for user ${userId}`, error);
@@ -279,8 +282,8 @@ class DynamoDBService {
                 PK: `WORKSPACE#${workspace.id}`,
                 SK: `WORKSPACE#${workspace.id}`,
                 EntityType: 'WORKSPACE',
-                GSI1PK: 'WORKSPACE',
-                GSI1SK: workspace.id,
+                GSI1PK: `USER#${workspace.userId}`,
+                GSI1SK: `WORKSPACE#${workspace.id}`,
                 ...workspace,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -365,10 +368,11 @@ class DynamoDBService {
         try {
             const result = await this.dynamodb.query({
                 TableName: this.tableName,
-                IndexName: 'userId-index',
-                KeyConditionExpression: 'userId = :userId',
+                IndexName: 'GSI1',
+                KeyConditionExpression: 'GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)',
                 ExpressionAttributeValues: {
-                    ':userId': userId,
+                    ':gsi1pk': `USER#${userId}`,
+                    ':gsi1sk': 'WORKSPACE#',
                 },
             }).promise();
             return (result.Items || []);
@@ -379,11 +383,13 @@ class DynamoDBService {
     }
     async getGroupWorkspaces(groupId) {
         try {
-            const result = await this.dynamodb.query({
+            // Scan for workspaces with the specified groupId
+            // Note: This is less efficient than a GSI query, but works with current schema
+            const result = await this.dynamodb.scan({
                 TableName: this.tableName,
-                IndexName: 'groupId-index',
-                KeyConditionExpression: 'groupId = :groupId',
+                FilterExpression: 'EntityType = :entityType AND groupId = :groupId',
                 ExpressionAttributeValues: {
+                    ':entityType': 'WORKSPACE',
                     ':groupId': groupId,
                 },
             }).promise();

@@ -57,6 +57,8 @@ class DynamoDBService {
         PK: `USER#${user.id}`,
         SK: `USER#${user.id}`,
         EntityType: 'USER',
+        GSI1PK: `EMAIL#${user.email}`,
+        GSI1SK: `USER#${user.id}`,
         ...user,
         createdAt: new Date(),
       };
