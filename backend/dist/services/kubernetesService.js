@@ -258,21 +258,43 @@ class KubernetesService {
                 },
                 spec: {
                     replicas: 1,
+                    revisionHistoryLimit: 10,
+                    progressDeadlineSeconds: 600,
                     selector: {
                         matchLabels: { app: name },
+                    },
+                    strategy: {
+                        type: 'RollingUpdate',
+                        rollingUpdate: {
+                            maxSurge: '25%',
+                            maxUnavailable: '25%',
+                        },
                     },
                     template: {
                         metadata: {
                             labels: { app: name, ...labels },
                         },
                         spec: {
+                            restartPolicy: 'Always',
+                            dnsPolicy: 'ClusterFirst',
+                            schedulerName: 'default-scheduler',
+                            terminationGracePeriodSeconds: 30,
+                            securityContext: {},
                             containers: [{
-                                    name: 'code-server',
+                                    name: 'codex',
                                     image,
-                                    ports: [{ containerPort: 8080 }],
-                                    env: [
-                                        { name: 'PASSWORD', value: 'vscode' }, // TODO: Generate secure password
+                                    imagePullPolicy: 'IfNotPresent',
+                                    args: [
+                                        '--host=0.0.0.0',
+                                        '--port=8000',
+                                        '--connection-token=12345', // TODO: Generate secure token
+                                        `--server-base-path=/${namespace}`,
                                     ],
+                                    ports: [{
+                                            containerPort: 8000,
+                                            name: 'http',
+                                            protocol: 'TCP',
+                                        }],
                                     resources: {
                                         requests: {
                                             cpu: resources.cpu,
@@ -283,17 +305,48 @@ class KubernetesService {
                                             memory: resources.memory,
                                         },
                                     },
-                                    volumeMounts: [{
-                                            name: 'workspace-storage',
-                                            mountPath: '/home/coder',
-                                        }],
-                                }],
-                            volumes: [{
-                                    name: 'workspace-storage',
-                                    persistentVolumeClaim: {
-                                        claimName: `${name}-pvc`,
+                                    startupProbe: {
+                                        tcpSocket: {
+                                            port: 8000,
+                                        },
+                                        failureThreshold: 24,
+                                        periodSeconds: 10,
+                                        timeoutSeconds: 240,
+                                        successThreshold: 1,
                                     },
+                                    livenessProbe: {
+                                        tcpSocket: {
+                                            port: 8000,
+                                        },
+                                        failureThreshold: 3,
+                                        periodSeconds: 10,
+                                        timeoutSeconds: 5,
+                                        successThreshold: 1,
+                                    },
+                                    readinessProbe: {
+                                        tcpSocket: {
+                                            port: 8000,
+                                        },
+                                        failureThreshold: 2,
+                                        periodSeconds: 5,
+                                        timeoutSeconds: 3,
+                                        successThreshold: 1,
+                                    },
+                                    terminationMessagePath: '/dev/termination-log',
+                                    terminationMessagePolicy: 'File',
+                                    // TODO: Re-enable volume mounts once PVC storage is configured
+                                    // volumeMounts: [{
+                                    //   name: 'workspace-storage',
+                                    //   mountPath: '/home/coder',
+                                    // }],
                                 }],
+                            // TODO: Re-enable volumes once PVC storage is configured
+                            // volumes: [{
+                            //   name: 'workspace-storage',
+                            //   persistentVolumeClaim: {
+                            //     claimName: `${name}-pvc`,
+                            //   },
+                            // }],
                         },
                     },
                 },
@@ -657,8 +710,9 @@ class KubernetesService {
                     selector: { app: name },
                     ports: [{
                             port: 80,
-                            targetPort: 8080,
+                            targetPort: 8000,
                             protocol: 'TCP',
+                            name: 'http',
                         }],
                     type: 'ClusterIP',
                 },

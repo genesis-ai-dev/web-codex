@@ -13,6 +13,11 @@ const errors_1 = require("../utils/errors");
 const router = (0, express_1.Router)();
 // All workspace routes require authentication
 router.use(auth_1.authenticate);
+// Helper function to get namespace for a workspace
+async function getWorkspaceNamespace(workspace) {
+    const group = await dynamodbService_1.dynamodbService.getGroup(workspace.groupId);
+    return group ? group.namespace : null;
+}
 // List workspaces
 router.get('/', (0, validation_1.validateQuery)(validation_1.commonSchemas.workspaceQuery), async (req, res) => {
     try {
@@ -54,8 +59,13 @@ router.get('/', (0, validation_1.validateQuery)(validation_1.commonSchemas.works
         // Update workspace statuses from Kubernetes
         const updatedWorkspaces = await Promise.all(paginatedWorkspaces.map(async (workspace) => {
             try {
-                const namespace = `group-${workspace.groupId}`;
-                const k8sStatus = await kubernetesService_1.kubernetesService.getDeploymentStatus(namespace, workspace.name);
+                const namespace = await getWorkspaceNamespace(workspace);
+                if (!namespace) {
+                    logger_1.logger.warn(`No namespace found for workspace ${workspace.id}`);
+                    return workspace;
+                }
+                const k8sName = `workspace-${workspace.id.substring(3)}`.toLowerCase();
+                const k8sStatus = await kubernetesService_1.kubernetesService.getDeploymentStatus(namespace, k8sName);
                 if (k8sStatus !== workspace.status) {
                     // Update status in database
                     const updatedWorkspace = await dynamodbService_1.dynamodbService.updateWorkspace(workspace.id, { status: k8sStatus });
@@ -108,14 +118,15 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
             groupName: group.displayName,
             userId: user.id,
             status: types_1.WorkspaceStatus.PENDING,
-            url: `https://${k8sName}.${namespace}.workspaces.example.com`,
+            url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/`,
             resources,
-            image: createRequest.image || 'codercom/code-server:latest',
+            image: createRequest.image || 'ghcr.io/genesis-ai-dev/codex:master',
             replicas: 0, // Start stopped
         });
         // Create Kubernetes resources
         try {
-            await kubernetesService_1.kubernetesService.createPVC(namespace, k8sName, resources.storage);
+            // TODO: Re-enable PVC creation once storage is configured
+            // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
             await kubernetesService_1.kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
             await kubernetesService_1.kubernetesService.createService(namespace, k8sName);
             // Update status to stopped (created but not running)
@@ -151,8 +162,13 @@ router.get('/:workspaceId', (0, validation_1.validateParams)(validation_1.common
         }
         // Get current status from Kubernetes
         try {
-            const namespace = `group-${workspace.groupId}`;
-            const k8sStatus = await kubernetesService_1.kubernetesService.getDeploymentStatus(namespace, workspace.name);
+            const namespace = await getWorkspaceNamespace(workspace);
+            if (!namespace) {
+                logger_1.logger.warn(`No namespace found for workspace ${workspaceId}`);
+                return res.json(workspace);
+            }
+            const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
+            const k8sStatus = await kubernetesService_1.kubernetesService.getDeploymentStatus(namespace, k8sName);
             const metrics = await kubernetesService_1.kubernetesService.getNamespaceMetrics(namespace);
             if (k8sStatus !== workspace.status) {
                 const updatedWorkspace = await dynamodbService_1.dynamodbService.updateWorkspace(workspaceId, {
@@ -210,16 +226,24 @@ router.delete('/:workspaceId', rateLimiting_1.operationRateLimits.deleteWorkspac
         if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
             throw new errors_1.NotFoundError('Workspace not found');
         }
-        const namespace = `group-${workspace.groupId}`;
         const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
         // Delete Kubernetes resources
-        try {
-            await kubernetesService_1.kubernetesService.deleteDeployment(namespace, k8sName);
-            await kubernetesService_1.kubernetesService.deleteNamespacedService(k8sName, namespace);
-            await kubernetesService_1.kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+        const namespace = await getWorkspaceNamespace(workspace);
+        if (namespace) {
+            try {
+                await kubernetesService_1.kubernetesService.deleteDeployment(namespace, k8sName);
+                await kubernetesService_1.kubernetesService.deleteNamespacedService(k8sName, namespace);
+                // TODO: Re-enable PVC deletion once storage is configured
+                // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+                logger_1.logger.info(`Kubernetes resources deleted for workspace ${workspaceId} in namespace ${namespace}`);
+            }
+            catch (k8sError) {
+                logger_1.logger.error(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);
+                // Continue with database deletion even if K8s deletion fails
+            }
         }
-        catch (k8sError) {
-            logger_1.logger.warn(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);
+        else {
+            logger_1.logger.warn(`Group ${workspace.groupId} not found for workspace ${workspaceId}, skipping K8s cleanup`);
         }
         // Delete from database
         await dynamodbService_1.dynamodbService.deleteWorkspace(workspaceId);
@@ -245,7 +269,10 @@ router.post('/:workspaceId/actions', rateLimiting_1.operationRateLimits.workspac
         if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
             throw new errors_1.NotFoundError('Workspace not found');
         }
-        const namespace = `group-${workspace.groupId}`;
+        const namespace = await getWorkspaceNamespace(workspace);
+        if (!namespace) {
+            throw new errors_1.NotFoundError('Workspace namespace not found');
+        }
         const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
         let newStatus;
         let replicas;
@@ -311,7 +338,10 @@ router.get('/:workspaceId/metrics', (0, validation_1.validateParams)(validation_
         if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
             throw new errors_1.NotFoundError('Workspace not found');
         }
-        const namespace = `group-${workspace.groupId}`;
+        const namespace = await getWorkspaceNamespace(workspace);
+        if (!namespace) {
+            throw new errors_1.NotFoundError('Workspace namespace not found');
+        }
         const metrics = await kubernetesService_1.kubernetesService.getNamespaceMetrics(namespace);
         res.json(metrics);
     }
@@ -334,7 +364,10 @@ router.get('/:workspaceId/logs', (0, validation_1.validateParams)(validation_1.c
         if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
             throw new errors_1.NotFoundError('Workspace not found');
         }
-        const namespace = `group-${workspace.groupId}`;
+        const namespace = await getWorkspaceNamespace(workspace);
+        if (!namespace) {
+            throw new errors_1.NotFoundError('Workspace namespace not found');
+        }
         const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
         // Get pod name for the workspace
         const pods = await kubernetesService_1.kubernetesService.listPods(namespace, `app=${k8sName}`);
@@ -362,7 +395,10 @@ router.get('/:workspaceId/health', (0, validation_1.validateParams)(validation_1
         if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
             throw new errors_1.NotFoundError('Workspace not found');
         }
-        const namespace = `group-${workspace.groupId}`;
+        const namespace = await getWorkspaceNamespace(workspace);
+        if (!namespace) {
+            throw new errors_1.NotFoundError('Workspace namespace not found');
+        }
         const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
         const componentHealth = await kubernetesService_1.kubernetesService.getWorkspaceComponentHealth(namespace, k8sName);
         res.json(componentHealth);
