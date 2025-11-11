@@ -148,6 +148,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [docker]
+    permissions:
+      id-token: write
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
