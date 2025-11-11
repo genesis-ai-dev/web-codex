@@ -340,26 +340,26 @@ router.post('/users/:userId/demote',
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
-      
+
       const user = await userService.getUserById(userId);
       if (!user) {
         throw new NotFoundError('User not found');
       }
-      
+
       if (!user.isAdmin) {
         return res.json({ message: 'User is not an admin' });
       }
-      
+
       // Prevent self-demotion
       if (userId === req.user!.id) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Cannot demote yourself',
           code: 'SELF_DEMOTION_NOT_ALLOWED'
         });
       }
-      
+
       const updatedUser = await userService.setUserAdmin(userId, false);
-      
+
       // Log admin action
       await dynamodbService.createAuditLog({
         userId: req.user!.id,
@@ -369,11 +369,91 @@ router.post('/users/:userId/demote',
         details: { demotedUser: user.email },
         success: true,
       });
-      
+
       logger.info(`Admin ${userId} demoted by ${req.user!.id}`);
       res.json(updatedUser);
     } catch (error) {
       logger.error('Failed to demote admin user:', error);
+      throw error;
+    }
+  }
+);
+
+// Add user to group
+router.post('/users/:userId/groups',
+  validateParams(commonSchemas.id),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const { groupId } = req.body;
+
+      if (!groupId) {
+        return res.status(400).json({
+          message: 'groupId is required',
+          code: 'MISSING_GROUP_ID'
+        });
+      }
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Verify group exists
+      const group = await dynamodbService.getGroup(groupId);
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
+      const updatedUser = await userService.addUserToGroup(userId, groupId);
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'add_user_to_group',
+        resource: `user:${userId}`,
+        details: { groupId, groupName: group.name },
+        success: true,
+      });
+
+      logger.info(`User ${userId} added to group ${groupId} by admin ${req.user!.id}`);
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Failed to add user to group:', error);
+      throw error;
+    }
+  }
+);
+
+// Remove user from group
+router.delete('/users/:userId/groups/:groupId',
+  validateParams(commonSchemas.id),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, groupId } = req.params;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      const updatedUser = await userService.removeUserFromGroup(userId, groupId);
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'remove_user_from_group',
+        resource: `user:${userId}`,
+        details: { groupId },
+        success: true,
+      });
+
+      logger.info(`User ${userId} removed from group ${groupId} by admin ${req.user!.id}`);
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Failed to remove user from group:', error);
       throw error;
     }
   }

@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { WorkspacesPage } from './pages/WorkspacesPage';
 import { WorkspaceDetailsPage } from './pages/WorkspaceDetailsPage';
 import { GroupsPage } from './pages/GroupsPage';
+import { UsersPage } from './pages/UsersPage';
 import { AuthConfig } from './types';
 import './styles/index.css';
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="/workspaces" element={<ProtectedRoute><WorkspacesPage /></ProtectedRoute>} />
             <Route path="/workspaces/:workspaceId" element={<ProtectedRoute><WorkspaceDetailsPage /></ProtectedRoute>} />
             <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminPlaceholder /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -46,10 +48,11 @@ function App() {
 // Protected route wrapper
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireAdmin?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin = false }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -64,6 +67,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requireAdmin && !user?.isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

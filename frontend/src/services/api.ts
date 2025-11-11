@@ -196,6 +196,16 @@ class ApiService {
     await this.client.delete(`/admin/users/${userId}`);
   }
 
+  async addUserToGroup(userId: string, groupId: string): Promise<User> {
+    const response = await this.client.post(`/admin/users/${userId}/groups`, { groupId });
+    return response.data;
+  }
+
+  async removeUserFromGroup(userId: string, groupId: string): Promise<User> {
+    const response = await this.client.delete(`/admin/users/${userId}/groups/${groupId}`);
+    return response.data;
+  }
+
   // Audit logs (admin only)
   async getAuditLogs(
     startDate?: string,
