@@ -236,6 +236,7 @@ class KubernetesService {
     name: string,
     image: string,
     resources: any,
+    connectionToken: string,
     labels: Record<string, string> = {}
   ): Promise<void> {
     try {
@@ -280,7 +281,7 @@ class KubernetesService {
                 args: [
                   '--host=0.0.0.0',
                   '--port=8000',
-                  '--connection-token=12345', // TODO: Generate secure token
+                  `--connection-token=${connectionToken}`,
                   `--server-base-path=/${namespace}/${name}`,
                 ],
                 ports: [{

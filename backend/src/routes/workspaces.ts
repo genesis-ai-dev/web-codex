@@ -126,14 +126,17 @@ router.post('/',
       const workspaceId = `ws_${uuidv4().replace(/-/g, '')}`;
       const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
       const namespace = group.namespace;
-      
+
+      // Generate unique connection token for VSCode authentication
+      const connectionToken = uuidv4();
+
       // Default resources if not provided
       const resources = createRequest.resources || {
         cpu: '2',
         memory: '4Gi',
         storage: '20Gi',
       };
-      
+
       // Create workspace in database
       const workspace = await dynamodbService.createWorkspace({
         id: workspaceId,
@@ -143,7 +146,8 @@ router.post('/',
         groupName: group.displayName,
         userId: user.id,
         status: WorkspaceStatus.PENDING,
-        url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/`,
+        url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/?tkn=${connectionToken}`,
+        connectionToken,
         resources,
         image: createRequest.image || 'ghcr.io/genesis-ai-dev/codex:master',
         replicas: 0, // Start stopped
@@ -153,7 +157,7 @@ router.post('/',
       try {
         // TODO: Re-enable PVC creation once storage is configured
         // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
-        await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
+        await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources, connectionToken);
         await kubernetesService.createService(namespace, k8sName);
 
         // Create or update Ingress rule for this workspace

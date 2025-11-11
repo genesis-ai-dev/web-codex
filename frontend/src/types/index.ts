@@ -60,6 +60,7 @@ export interface Workspace {
   updatedAt: string;
   lastAccessedAt?: string;
   url?: string;
+  connectionToken: string;
   resources: {
     cpu: string;
     memory: string;
