@@ -1,6 +1,6 @@
-# VSCode Platform Frontend
+# Codex Web Frontend
 
-A React-based frontend for the multi-tenant Kubernetes VSCode platform. This application provides a modern, responsive interface for managing development workspaces, groups, and platform administration.
+A React-based frontend for Codex Web. This application provides a modern, responsive interface for managing development workspaces, groups, and platform administration.
 
 ## Features
 
@@ -188,4 +188,4 @@ Set these in your deployment environment:
 
 ---
 
-This frontend provides a solid foundation for the multi-tenant VSCode platform with modern React patterns, comprehensive TypeScript support, and a polished user interface ready for production deployment.
+This frontend provides a solid foundation for Codex Web with modern React patterns, comprehensive TypeScript support, and a polished user interface ready for production deployment.

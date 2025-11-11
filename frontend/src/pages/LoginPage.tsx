@@ -45,7 +45,7 @@ export const LoginPage: React.FC = () => {
             </svg>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            VSCode Platform
+            Codex Web
           </h2>
           <p className="mt-2 text-sm text-gray-600 max-w-sm mx-auto text-balance">
             Sign in to access your development workspaces and collaborate with your team.
