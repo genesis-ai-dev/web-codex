@@ -6,9 +6,12 @@ import { User, JwtPayload } from '../types';
 class UserService {
   async getOrCreateUser(jwtPayload: JwtPayload): Promise<User> {
     try {
+      // Determine admin status from JWT groups (Cognito groups)
+      const isAdmin = (jwtPayload.groups || []).includes('platform-admins');
+
       // Try to find existing user by email
       let user = await dynamodbService.getUserByEmail(jwtPayload.email);
-      
+
       if (!user) {
         // Create new user
         user = await dynamodbService.createUser({
@@ -16,15 +19,16 @@ class UserService {
           username: jwtPayload.username || jwtPayload.email.split('@')[0],
           email: jwtPayload.email,
           groups: jwtPayload.groups || [],
-          isAdmin: false, // Default to false, admins must be set manually
+          isAdmin: isAdmin, // Set from Cognito groups
         });
-        
-        logger.info(`New user created: ${user.email}`);
+
+        logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
       } else {
-        // Update user's last login and groups
+        // Update user's last login, groups, and admin status from JWT
         user = await dynamodbService.updateUser(user.id, {
           lastLoginAt: new Date(),
           groups: jwtPayload.groups || user.groups, // Use JWT groups if available
+          isAdmin: isAdmin, // Always sync admin status from Cognito
         });
       }
 
