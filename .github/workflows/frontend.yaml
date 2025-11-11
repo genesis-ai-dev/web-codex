@@ -165,7 +165,7 @@ jobs:
           aws eks update-kubeconfig --region ca-west-1 --name frontier-rnd-cluster
       - name: get sha
         id: vars
-        run: echo "sha$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "sha=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
       
       - name: Update deployment image
         run: |
