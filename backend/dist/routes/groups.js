@@ -88,7 +88,11 @@ router.post('/', auth_1.requireAdmin, rateLimiting_1.operationRateLimits.createG
             await kubernetesService_1.kubernetesService.createResourceQuota(createRequest.namespace, resourceQuota);
             // Create NetworkPolicy for isolation (implementation depends on your network setup)
             // await kubernetesService.createNetworkPolicy(createRequest.namespace);
-            logger_1.logger.info(`Group created: ${groupId} with namespace ${createRequest.namespace}`);
+            // Add the creator to the group
+            await userService_1.userService.addUserToGroup(user.id, groupId);
+            // Update member count
+            await dynamodbService_1.dynamodbService.updateGroup(groupId, { memberCount: 1 });
+            logger_1.logger.info(`Group created: ${groupId} with namespace ${createRequest.namespace}, creator ${user.email} added as member`);
             res.status(201).json(group);
         }
         catch (k8sError) {

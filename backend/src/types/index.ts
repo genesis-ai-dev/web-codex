@@ -8,8 +8,8 @@ export interface User {
   name?: string;
   groups: string[];
   isAdmin: boolean;
-  createdAt: Date;
-  lastLoginAt?: Date;
+  createdAt: string;
+  lastLoginAt?: string;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -34,7 +34,7 @@ export interface Group {
   description?: string;
   memberCount: number;
   resourceQuota: ResourceQuota;
-  createdAt: Date;
+  createdAt: string;
 }
 
 export interface CreateGroupRequest {
@@ -79,9 +79,9 @@ export interface Workspace {
   groupName: string;
   userId: string;
   status: WorkspaceStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  lastAccessedAt?: Date;
+  createdAt: string;
+  updatedAt: string;
+  lastAccessedAt?: string;
   url?: string;
   resources: WorkspaceResources;
   usage?: ResourceUsage;
@@ -132,7 +132,7 @@ export interface AuditLog {
   action: string;
   resource: string;
   details?: any;
-  timestamp: Date;
+  timestamp: string;
   success: boolean;
   error?: string;
 }

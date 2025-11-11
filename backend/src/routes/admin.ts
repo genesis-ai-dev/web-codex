@@ -244,9 +244,9 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     // Recent activity (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const recentUsers = users.filter(u => 
-      u.lastLoginAt && u.lastLoginAt >= sevenDaysAgo
+
+    const recentUsers = users.filter(u =>
+      u.lastLoginAt && new Date(u.lastLoginAt) >= sevenDaysAgo
     ).length;
     
     const stats = {

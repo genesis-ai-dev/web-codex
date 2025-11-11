@@ -7,24 +7,30 @@ const logger_1 = require("../config/logger");
 class UserService {
     async getOrCreateUser(jwtPayload) {
         try {
+            // Determine admin status from JWT groups (Cognito groups like "platform-admins")
+            // These are OAuth provider groups, NOT application groups
+            const isAdmin = (jwtPayload.groups || []).includes('platform-admins');
             // Try to find existing user by email
             let user = await dynamodbService_1.dynamodbService.getUserByEmail(jwtPayload.email);
             if (!user) {
-                // Create new user
+                // Create new user with empty application groups array
+                // Application groups (grp_*) must be assigned via addUserToGroup, not from JWT
                 user = await dynamodbService_1.dynamodbService.createUser({
                     id: `usr_${(0, uuid_1.v4)().replace(/-/g, '')}`,
                     username: jwtPayload.username || jwtPayload.email.split('@')[0],
                     email: jwtPayload.email,
-                    groups: jwtPayload.groups || [],
-                    isAdmin: false, // Default to false, admins must be set manually
+                    groups: [], // Start with no application groups
+                    isAdmin: isAdmin, // Set from OAuth/Cognito groups
                 });
-                logger_1.logger.info(`New user created: ${user.email}`);
+                logger_1.logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
             }
             else {
-                // Update user's last login and groups
+                // Update user's last login and admin status from JWT
+                // IMPORTANT: Do NOT overwrite application groups with JWT groups
                 user = await dynamodbService_1.dynamodbService.updateUser(user.id, {
-                    lastLoginAt: new Date(),
-                    groups: jwtPayload.groups || user.groups, // Use JWT groups if available
+                    lastLoginAt: new Date().toISOString(),
+                    isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
+                    // groups field is intentionally NOT updated here - preserve application groups
                 });
             }
             return user;

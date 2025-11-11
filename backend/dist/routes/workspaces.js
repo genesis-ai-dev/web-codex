@@ -275,7 +275,7 @@ router.post('/:workspaceId/actions', rateLimiting_1.operationRateLimits.workspac
         await dynamodbService_1.dynamodbService.updateWorkspace(workspaceId, {
             status: newStatus,
             replicas,
-            lastAccessedAt: new Date(),
+            lastAccessedAt: new Date().toISOString(),
         });
         // Scale deployment in Kubernetes
         await kubernetesService_1.kubernetesService.scaleDeployment(namespace, k8sName, replicas);

@@ -333,10 +333,10 @@ router.post('/:workspaceId/actions',
       }
       
       // Update status in database
-      await dynamodbService.updateWorkspace(workspaceId, { 
+      await dynamodbService.updateWorkspace(workspaceId, {
         status: newStatus,
         replicas,
-        lastAccessedAt: new Date(),
+        lastAccessedAt: new Date().toISOString(),
       });
       
       // Scale deployment in Kubernetes

@@ -44,7 +44,7 @@ const config_1 = require("../config");
 const logger_1 = require("../config/logger");
 const errors_1 = require("../utils/errors");
 const userService_1 = require("../services/userService");
-// Initialize Cognito JWT verifier
+// Initialize Cognito JWT verifier for ID tokens
 const cognitoVerifier = config_1.config.cognitoUserPoolId ? aws_jwt_verify_1.CognitoJwtVerifier.create({
     userPoolId: config_1.config.cognitoUserPoolId,
     tokenUse: 'id',

@@ -29,7 +29,7 @@ class UserService {
         // Update user's last login and admin status from JWT
         // IMPORTANT: Do NOT overwrite application groups with JWT groups
         user = await dynamodbService.updateUser(user.id, {
-          lastLoginAt: new Date(),
+          lastLoginAt: new Date().toISOString(),
           isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
           // groups field is intentionally NOT updated here - preserve application groups
         });

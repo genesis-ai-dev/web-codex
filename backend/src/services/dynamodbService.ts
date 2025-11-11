@@ -60,7 +60,7 @@ class DynamoDBService {
         GSI1PK: `EMAIL#${user.email}`,
         GSI1SK: `USER#${user.id}`,
         ...user,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       };
 
       await this.dynamodb.put({
@@ -201,7 +201,7 @@ class DynamoDBService {
         GSI1SK: group.id,
         ...group,
         memberCount: 0,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       };
 
       await this.dynamodb.put({
@@ -306,6 +306,7 @@ class DynamoDBService {
   // Workspace operations
   async createWorkspace(workspace: Omit<Workspace, 'createdAt' | 'updatedAt'>): Promise<Workspace> {
     try {
+      const now = new Date().toISOString();
       const item: any = {
         PK: `WORKSPACE#${workspace.id}`,
         SK: `WORKSPACE#${workspace.id}`,
@@ -313,8 +314,8 @@ class DynamoDBService {
         GSI1PK: `USER#${workspace.userId}`,
         GSI1SK: `WORKSPACE#${workspace.id}`,
         ...workspace,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       };
 
       await this.dynamodb.put({
@@ -357,7 +358,7 @@ class DynamoDBService {
       const expressionAttributeValues: any = {};
 
       // Always update the updatedAt timestamp
-      updates.updatedAt = new Date();
+      updates.updatedAt = new Date().toISOString() as any;
 
       for (const [key, value] of Object.entries(updates)) {
         if (key !== 'id' && value !== undefined) {
@@ -443,7 +444,7 @@ class DynamoDBService {
       const item: AuditLog = {
         ...auditLog,
         id: `log_${Date.now()}_${Math.random().toString(36).substring(2)}`,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
 
       await this.dynamodb.put({

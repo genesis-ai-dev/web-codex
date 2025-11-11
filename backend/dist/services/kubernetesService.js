@@ -107,6 +107,8 @@ class KubernetesService {
             };
             await this.coreV1Api.createNamespace({ body: namespace });
             logger_1.logger.info(`Namespace created: ${name}`);
+            // Wait for namespace to be fully ready
+            await this.waitForNamespace(name, 30000); // 30 second timeout
         }
         catch (error) {
             if (error.statusCode === 409) {
@@ -115,6 +117,24 @@ class KubernetesService {
             }
             throw new errors_1.KubernetesError(`Failed to create namespace ${name}`, error);
         }
+    }
+    async waitForNamespace(name, timeoutMs = 30000) {
+        const startTime = Date.now();
+        const pollInterval = 1000; // Check every 1 second
+        while (Date.now() - startTime < timeoutMs) {
+            try {
+                const namespace = await this.coreV1Api.readNamespace({ name });
+                if (namespace.status?.phase === 'Active') {
+                    logger_1.logger.info(`Namespace ${name} is active and ready`);
+                    return;
+                }
+            }
+            catch (error) {
+                // Namespace not ready yet, continue polling
+            }
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+        }
+        throw new errors_1.KubernetesError(`Timeout waiting for namespace ${name} to become ready`);
     }
     async listNamespaces() {
         try {
@@ -144,7 +164,13 @@ class KubernetesService {
             return true;
         }
         catch (error) {
-            if (error.statusCode === 404) {
+            // Check multiple possible locations for the 404 status code
+            const statusCode = error.statusCode || error.response?.statusCode || error.code;
+            if (statusCode === 404) {
+                return false;
+            }
+            // Also check if the error body indicates not found
+            if (error.body && typeof error.body === 'string' && error.body.includes('"code":404')) {
                 return false;
             }
             throw new errors_1.KubernetesError(`Failed to check namespace ${name}`, error);
@@ -152,28 +178,38 @@ class KubernetesService {
     }
     // Resource quota operations
     async createResourceQuota(namespace, quota) {
-        try {
-            const resourceQuota = {
-                metadata: {
-                    name: `${namespace}-quota`,
-                    namespace,
-                },
-                spec: {
-                    hard: {
-                        'requests.cpu': quota.cpu,
-                        'requests.memory': quota.memory,
-                        'limits.cpu': quota.cpu,
-                        'limits.memory': quota.memory,
-                        'persistentvolumeclaims': quota.storage,
-                        pods: quota.pods.toString(),
+        const maxRetries = 5;
+        const retryDelay = 2000; // 2 seconds
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const resourceQuota = {
+                    metadata: {
+                        name: `${namespace}-quota`,
+                        namespace,
                     },
-                },
-            };
-            await this.coreV1Api.createNamespacedResourceQuota({ namespace, body: resourceQuota });
-            logger_1.logger.info(`Resource quota created for namespace: ${namespace}`);
-        }
-        catch (error) {
-            throw new errors_1.KubernetesError(`Failed to create resource quota for ${namespace}`, error);
+                    spec: {
+                        hard: {
+                            'requests.cpu': quota.cpu,
+                            'requests.memory': quota.memory,
+                            'limits.cpu': quota.cpu,
+                            'limits.memory': quota.memory,
+                            'persistentvolumeclaims': quota.storage,
+                            pods: quota.pods.toString(),
+                        },
+                    },
+                };
+                await this.coreV1Api.createNamespacedResourceQuota({ namespace, body: resourceQuota });
+                logger_1.logger.info(`Resource quota created for namespace: ${namespace}`);
+                return;
+            }
+            catch (error) {
+                if (error.statusCode === 404 && attempt < maxRetries) {
+                    logger_1.logger.warn(`Namespace ${namespace} not ready yet, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    continue;
+                }
+                throw new errors_1.KubernetesError(`Failed to create resource quota for ${namespace}`, error);
+            }
         }
     }
     // Pod operations

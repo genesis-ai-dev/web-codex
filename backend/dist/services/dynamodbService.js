@@ -54,7 +54,7 @@ class DynamoDBService {
                 GSI1PK: `EMAIL#${user.email}`,
                 GSI1SK: `USER#${user.id}`,
                 ...user,
-                createdAt: new Date(),
+                createdAt: new Date().toISOString(),
             };
             await this.dynamodb.put({
                 TableName: this.tableName,
@@ -183,7 +183,7 @@ class DynamoDBService {
                 GSI1SK: group.id,
                 ...group,
                 memberCount: 0,
-                createdAt: new Date(),
+                createdAt: new Date().toISOString(),
             };
             await this.dynamodb.put({
                 TableName: this.tableName,
@@ -279,6 +279,7 @@ class DynamoDBService {
     // Workspace operations
     async createWorkspace(workspace) {
         try {
+            const now = new Date().toISOString();
             const item = {
                 PK: `WORKSPACE#${workspace.id}`,
                 SK: `WORKSPACE#${workspace.id}`,
@@ -286,8 +287,8 @@ class DynamoDBService {
                 GSI1PK: `USER#${workspace.userId}`,
                 GSI1SK: `WORKSPACE#${workspace.id}`,
                 ...workspace,
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                createdAt: now,
+                updatedAt: now,
             };
             await this.dynamodb.put({
                 TableName: this.tableName,
@@ -326,7 +327,7 @@ class DynamoDBService {
             const expressionAttributeNames = {};
             const expressionAttributeValues = {};
             // Always update the updatedAt timestamp
-            updates.updatedAt = new Date();
+            updates.updatedAt = new Date().toISOString();
             for (const [key, value] of Object.entries(updates)) {
                 if (key !== 'id' && value !== undefined) {
                     updateExpression.push(`#${key} = :${key}`);
@@ -406,7 +407,7 @@ class DynamoDBService {
             const item = {
                 ...auditLog,
                 id: `log_${Date.now()}_${Math.random().toString(36).substring(2)}`,
-                timestamp: new Date(),
+                timestamp: new Date().toISOString(),
             };
             await this.dynamodb.put({
                 TableName: this.tableName,

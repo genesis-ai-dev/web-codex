@@ -13,8 +13,17 @@ export function formatDateTime(date: string | Date): string {
 }
 
 export function formatRelativeTime(date: string | Date): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return formatDistanceToNow(dateObj, { addSuffix: true });
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid date';
+    }
+    return formatDistanceToNow(dateObj, { addSuffix: true });
+  } catch (error) {
+    console.error('Error formatting date:', date, error);
+    return 'Invalid date';
+  }
 }
 
 // Resource formatting
