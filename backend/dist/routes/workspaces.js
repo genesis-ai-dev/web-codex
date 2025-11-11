@@ -137,7 +137,7 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
     }
 });
 // Get workspace details
-router.get('/:workspaceId', (0, validation_1.validateParams)(validation_1.commonSchemas.id), async (req, res) => {
+router.get('/:workspaceId', (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;
@@ -176,7 +176,7 @@ router.get('/:workspaceId', (0, validation_1.validateParams)(validation_1.common
     }
 });
 // Update workspace
-router.patch('/:workspaceId', (0, validation_1.validateParams)(validation_1.commonSchemas.id), (0, validation_1.validate)(validation_1.commonSchemas.updateWorkspace), async (req, res) => {
+router.patch('/:workspaceId', (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), (0, validation_1.validate)(validation_1.commonSchemas.updateWorkspace), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;
@@ -198,7 +198,7 @@ router.patch('/:workspaceId', (0, validation_1.validateParams)(validation_1.comm
     }
 });
 // Delete workspace
-router.delete('/:workspaceId', rateLimiting_1.operationRateLimits.deleteWorkspace, (0, validation_1.validateParams)(validation_1.commonSchemas.id), async (req, res) => {
+router.delete('/:workspaceId', rateLimiting_1.operationRateLimits.deleteWorkspace, (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;
@@ -232,7 +232,7 @@ router.delete('/:workspaceId', rateLimiting_1.operationRateLimits.deleteWorkspac
     }
 });
 // Workspace actions (start/stop/restart)
-router.post('/:workspaceId/actions', rateLimiting_1.operationRateLimits.workspaceActions, (0, validation_1.validateParams)(validation_1.commonSchemas.id), (0, validation_1.validate)(validation_1.commonSchemas.workspaceAction), async (req, res) => {
+router.post('/:workspaceId/actions', rateLimiting_1.operationRateLimits.workspaceActions, (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), (0, validation_1.validate)(validation_1.commonSchemas.workspaceAction), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;
@@ -299,7 +299,7 @@ router.post('/:workspaceId/actions', rateLimiting_1.operationRateLimits.workspac
     }
 });
 // Get workspace metrics
-router.get('/:workspaceId/metrics', (0, validation_1.validateParams)(validation_1.commonSchemas.id), async (req, res) => {
+router.get('/:workspaceId/metrics', (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;
@@ -321,7 +321,7 @@ router.get('/:workspaceId/metrics', (0, validation_1.validateParams)(validation_
     }
 });
 // Get workspace logs
-router.get('/:workspaceId/logs', (0, validation_1.validateParams)(validation_1.commonSchemas.id), (0, validation_1.validateQuery)(validation_1.commonSchemas.workspaceLogsQuery), async (req, res) => {
+router.get('/:workspaceId/logs', (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), (0, validation_1.validateQuery)(validation_1.commonSchemas.workspaceLogsQuery), async (req, res) => {
     try {
         const user = req.user;
         const { workspaceId } = req.params;

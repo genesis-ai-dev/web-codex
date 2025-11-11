@@ -164,7 +164,7 @@ router.post('/',
 
 // Get workspace details
 router.get('/:workspaceId',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.workspaceId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const user = req.user!;
@@ -208,7 +208,7 @@ router.get('/:workspaceId',
 
 // Update workspace
 router.patch('/:workspaceId',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.workspaceId),
   validate(commonSchemas.updateWorkspace),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -239,7 +239,7 @@ router.patch('/:workspaceId',
 // Delete workspace
 router.delete('/:workspaceId',
   operationRateLimits.deleteWorkspace,
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.workspaceId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const user = req.user!;
@@ -282,7 +282,7 @@ router.delete('/:workspaceId',
 // Workspace actions (start/stop/restart)
 router.post('/:workspaceId/actions',
   operationRateLimits.workspaceActions,
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.workspaceId),
   validate(commonSchemas.workspaceAction),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -365,7 +365,7 @@ router.post('/:workspaceId/actions',
 
 // Get workspace metrics
 router.get('/:workspaceId/metrics',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.workspaceId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const user = req.user!;
@@ -394,7 +394,7 @@ router.get('/:workspaceId/metrics',
 
 // Get workspace logs
 router.get('/:workspaceId/logs',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.workspaceId),
   validateQuery(commonSchemas.workspaceLogsQuery),
   async (req: AuthenticatedRequest, res: Response) => {
     try {

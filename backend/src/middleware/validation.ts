@@ -72,6 +72,10 @@ export const commonSchemas = {
     id: Joi.string().required(),
   }),
 
+  workspaceId: Joi.object({
+    workspaceId: Joi.string().required(),
+  }),
+
   // Pagination
   pagination: Joi.object({
     limit: Joi.number().integer().min(1).max(100).default(20),

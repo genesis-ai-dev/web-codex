@@ -66,6 +66,9 @@ exports.commonSchemas = {
     id: joi_1.default.object({
         id: joi_1.default.string().required(),
     }),
+    workspaceId: joi_1.default.object({
+        workspaceId: joi_1.default.string().required(),
+    }),
     // Pagination
     pagination: joi_1.default.object({
         limit: joi_1.default.number().integer().min(1).max(100).default(20),
@@ -83,7 +86,7 @@ exports.commonSchemas = {
             'string.pattern.base': 'Name must be a valid Kubernetes name (lowercase alphanumeric with hyphens)',
         }),
         displayName: joi_1.default.string().min(1).max(100).required(),
-        description: joi_1.default.string().max(500).optional(),
+        description: joi_1.default.string().max(500).allow('').optional(),
         namespace: joi_1.default.string()
             .regex(/^group-[a-z0-9]([-a-z0-9]*[a-z0-9])?$/)
             .required()
@@ -118,7 +121,7 @@ exports.commonSchemas = {
             .min(1)
             .max(63)
             .required(),
-        description: joi_1.default.string().max(500).optional(),
+        description: joi_1.default.string().max(500).allow('').optional(),
         groupId: joi_1.default.string().required(),
         image: joi_1.default.string().default('codercom/code-server:latest'),
         resources: joi_1.default.object({
