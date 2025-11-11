@@ -143,15 +143,16 @@ router.post('/',
         groupName: group.displayName,
         userId: user.id,
         status: WorkspaceStatus.PENDING,
-        url: `https://${k8sName}.${namespace}.workspaces.example.com`,
+        url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/`,
         resources,
-        image: createRequest.image || 'codercom/code-server:latest',
+        image: createRequest.image || 'ghcr.io/genesis-ai-dev/codex:master',
         replicas: 0, // Start stopped
       });
       
       // Create Kubernetes resources
       try {
-        await kubernetesService.createPVC(namespace, k8sName, resources.storage);
+        // TODO: Re-enable PVC creation once storage is configured
+        // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
         await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
         await kubernetesService.createService(namespace, k8sName);
         
@@ -281,7 +282,8 @@ router.delete('/:workspaceId',
         try {
           await kubernetesService.deleteDeployment(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
-          await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+          // TODO: Re-enable PVC deletion once storage is configured
+          // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
           logger.info(`Kubernetes resources deleted for workspace ${workspaceId} in namespace ${namespace}`);
         } catch (k8sError) {
           logger.error(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);

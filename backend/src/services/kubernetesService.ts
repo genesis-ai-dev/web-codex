@@ -323,17 +323,19 @@ class KubernetesService {
                 },
                 terminationMessagePath: '/dev/termination-log',
                 terminationMessagePolicy: 'File',
-                volumeMounts: [{
-                  name: 'workspace-storage',
-                  mountPath: '/home/coder',
-                }],
+                // TODO: Re-enable volume mounts once PVC storage is configured
+                // volumeMounts: [{
+                //   name: 'workspace-storage',
+                //   mountPath: '/home/coder',
+                // }],
               }],
-              volumes: [{
-                name: 'workspace-storage',
-                persistentVolumeClaim: {
-                  claimName: `${name}-pvc`,
-                },
-              }],
+              // TODO: Re-enable volumes once PVC storage is configured
+              // volumes: [{
+              //   name: 'workspace-storage',
+              //   persistentVolumeClaim: {
+              //     claimName: `${name}-pvc`,
+              //   },
+              // }],
             },
           },
         },
