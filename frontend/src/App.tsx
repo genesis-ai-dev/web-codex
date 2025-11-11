@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { WorkspacesPage } from './pages/WorkspacesPage';
+import { WorkspaceDetailsPage } from './pages/WorkspaceDetailsPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { AuthConfig } from './types';
 import './styles/index.css';
@@ -31,6 +32,7 @@ function App() {
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/workspaces" element={<ProtectedRoute><WorkspacesPage /></ProtectedRoute>} />
+            <Route path="/workspaces/:workspaceId" element={<ProtectedRoute><WorkspaceDetailsPage /></ProtectedRoute>} />
             <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminPlaceholder /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />

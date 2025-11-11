@@ -349,4 +349,27 @@ router.get('/:workspaceId/logs', (0, validation_1.validateParams)(validation_1.c
         throw error;
     }
 });
+// Get workspace component health
+router.get('/:workspaceId/health', (0, validation_1.validateParams)(validation_1.commonSchemas.workspaceId), async (req, res) => {
+    try {
+        const user = req.user;
+        const { workspaceId } = req.params;
+        const workspace = await dynamodbService_1.dynamodbService.getWorkspace(workspaceId);
+        if (!workspace) {
+            throw new errors_1.NotFoundError('Workspace not found');
+        }
+        // Verify user has access
+        if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
+            throw new errors_1.NotFoundError('Workspace not found');
+        }
+        const namespace = `group-${workspace.groupId}`;
+        const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
+        const componentHealth = await kubernetesService_1.kubernetesService.getWorkspaceComponentHealth(namespace, k8sName);
+        res.json(componentHealth);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to get workspace component health:', error);
+        throw error;
+    }
+});
 exports.default = router;

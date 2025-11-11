@@ -401,31 +401,62 @@ router.get('/:workspaceId/logs',
       const user = req.user!;
       const { workspaceId } = req.params;
       const { lines } = req.query as any;
-      
+
       const workspace = await dynamodbService.getWorkspace(workspaceId);
       if (!workspace) {
         throw new NotFoundError('Workspace not found');
       }
-      
+
       // Verify user has access
       if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
         throw new NotFoundError('Workspace not found');
       }
-      
+
       const namespace = `group-${workspace.groupId}`;
       const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
-      
+
       // Get pod name for the workspace
       const pods = await kubernetesService.listPods(namespace, `app=${k8sName}`);
       if (pods.length === 0) {
         return res.type('text/plain').send('No pods found for workspace');
       }
-      
+
       const logs = await kubernetesService.getPodLogs(namespace, pods[0].name, lines || 100);
-      
+
       res.type('text/plain').send(logs);
     } catch (error) {
       logger.error('Failed to get workspace logs:', error);
+      throw error;
+    }
+  }
+);
+
+// Get workspace component health
+router.get('/:workspaceId/health',
+  validateParams(commonSchemas.workspaceId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const user = req.user!;
+      const { workspaceId } = req.params;
+
+      const workspace = await dynamodbService.getWorkspace(workspaceId);
+      if (!workspace) {
+        throw new NotFoundError('Workspace not found');
+      }
+
+      // Verify user has access
+      if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
+        throw new NotFoundError('Workspace not found');
+      }
+
+      const namespace = `group-${workspace.groupId}`;
+      const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
+
+      const componentHealth = await kubernetesService.getWorkspaceComponentHealth(namespace, k8sName);
+
+      res.json(componentHealth);
+    } catch (error) {
+      logger.error('Failed to get workspace component health:', error);
       throw error;
     }
   }

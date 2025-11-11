@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Button } from '../components/Button';
@@ -6,11 +7,12 @@ import { StatusBadge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { Input, TextArea, Select } from '../components/Input';
 import { Progress } from '../components/Progress';
-import { Workspace, Group, CreateWorkspaceRequest, WorkspaceStatus } from '../types';
+import { Workspace, Group, CreateWorkspaceRequest } from '../types';
 import { apiService } from '../services/api';
 import { formatRelativeTime, formatCPU, formatMemory, getErrorMessage } from '../utils';
 
 export const WorkspacesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,6 +135,7 @@ export const WorkspacesPage: React.FC = () => {
                 key={workspace.id}
                 workspace={workspace}
                 onAction={handleWorkspaceAction}
+                onNavigate={() => navigate(`/workspaces/${workspace.id}`)}
               />
             ))}
           </div>
@@ -168,9 +171,10 @@ export const WorkspacesPage: React.FC = () => {
 interface WorkspaceCardProps {
   workspace: Workspace;
   onAction: (workspaceId: string, action: 'start' | 'stop' | 'restart' | 'delete') => void;
+  onNavigate: () => void;
 }
 
-const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction }) => {
+const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNavigate }) => {
   const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
 
   const handleAction = async (action: 'start' | 'stop' | 'restart' | 'delete') => {
@@ -199,8 +203,8 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction }) =>
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
         <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg">{workspace.name}</CardTitle>
+          <div className="flex-1 cursor-pointer" onClick={onNavigate}>
+            <CardTitle className="text-lg hover:text-primary-600 transition-colors">{workspace.name}</CardTitle>
             {workspace.description && (
               <p className="text-sm text-gray-600 mt-1">{workspace.description}</p>
             )}

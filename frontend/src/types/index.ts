@@ -143,3 +143,12 @@ export interface UserPreferences {
   language: string;
   notifications: NotificationSettings;
 }
+
+export interface ComponentHealthStatus {
+  name: string;
+  type: 'deployment' | 'service' | 'pvc' | 'pod';
+  healthy: boolean;
+  status: string;
+  reason: string;
+  details: any;
+}

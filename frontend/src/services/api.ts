@@ -9,7 +9,8 @@ import {
   ResourceUsage,
   PaginatedResponse,
   AuditLog,
-  ApiError
+  ApiError,
+  ComponentHealthStatus
 } from '../types';
 
 // Helper to get ID token from OIDC storage
@@ -166,6 +167,11 @@ class ApiService {
     const response = await this.client.get(`/workspaces/${workspaceId}/logs`, {
       params: { lines },
     });
+    return response.data;
+  }
+
+  async getWorkspaceComponentHealth(workspaceId: string): Promise<ComponentHealthStatus[]> {
+    const response = await this.client.get(`/workspaces/${workspaceId}/health`);
     return response.data;
   }
 

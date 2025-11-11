@@ -363,6 +363,283 @@ class KubernetesService {
             throw new errors_1.KubernetesError(`Failed to get deployment status for ${name}`, error);
         }
     }
+    async getWorkspaceComponentHealth(namespace, name) {
+        const components = [];
+        // Check Deployment
+        try {
+            const deployment = await this.appsV1Api.readNamespacedDeployment({ name, namespace });
+            const replicas = deployment.spec?.replicas || 0;
+            const readyReplicas = deployment.status?.readyReplicas || 0;
+            const availableReplicas = deployment.status?.availableReplicas || 0;
+            const unavailableReplicas = deployment.status?.unavailableReplicas || 0;
+            let healthy = true;
+            let reason = '';
+            if (replicas === 0) {
+                healthy = true;
+                reason = 'Deployment scaled to 0 replicas (workspace stopped)';
+            }
+            else if (readyReplicas < replicas) {
+                healthy = false;
+                reason = `Only ${readyReplicas} of ${replicas} replicas are ready`;
+                // Check for more specific issues
+                const conditions = deployment.status?.conditions || [];
+                const progressingCondition = conditions.find(c => c.type === 'Progressing');
+                const availableCondition = conditions.find(c => c.type === 'Available');
+                if (progressingCondition?.status === 'False') {
+                    reason = progressingCondition.message || reason;
+                }
+                else if (availableCondition?.status === 'False') {
+                    reason = availableCondition.message || reason;
+                }
+            }
+            else if (unavailableReplicas > 0) {
+                healthy = false;
+                reason = `${unavailableReplicas} replicas are unavailable`;
+            }
+            else {
+                healthy = true;
+                reason = `All ${replicas} replicas are ready and available`;
+            }
+            components.push({
+                name: 'Deployment',
+                type: 'deployment',
+                healthy,
+                status: deployment.status?.conditions?.find(c => c.type === 'Available')?.status === 'True' ? 'Available' : 'Unavailable',
+                reason,
+                details: {
+                    replicas: replicas,
+                    readyReplicas: readyReplicas,
+                    availableReplicas: availableReplicas,
+                    updatedReplicas: deployment.status?.updatedReplicas || 0,
+                }
+            });
+        }
+        catch (error) {
+            if (error.statusCode === 404) {
+                components.push({
+                    name: 'Deployment',
+                    type: 'deployment',
+                    healthy: false,
+                    status: 'NotFound',
+                    reason: 'Deployment does not exist',
+                    details: {}
+                });
+            }
+            else {
+                logger_1.logger.warn(`Failed to get deployment health for ${name}:`, error);
+                components.push({
+                    name: 'Deployment',
+                    type: 'deployment',
+                    healthy: false,
+                    status: 'Unknown',
+                    reason: 'Failed to fetch deployment status',
+                    details: { error: String(error) }
+                });
+            }
+        }
+        // Check Service
+        try {
+            const service = await this.coreV1Api.readNamespacedService({ name, namespace });
+            const clusterIP = service.spec?.clusterIP;
+            const ports = service.spec?.ports || [];
+            let healthy = true;
+            let reason = '';
+            if (!clusterIP || clusterIP === 'None') {
+                healthy = false;
+                reason = 'Service has no ClusterIP assigned';
+            }
+            else if (ports.length === 0) {
+                healthy = false;
+                reason = 'Service has no ports configured';
+            }
+            else {
+                healthy = true;
+                reason = `Service is available at ${clusterIP}`;
+            }
+            components.push({
+                name: 'Service',
+                type: 'service',
+                healthy,
+                status: healthy ? 'Active' : 'Misconfigured',
+                reason,
+                details: {
+                    clusterIP: clusterIP || 'None',
+                    ports: ports.map(p => ({ port: p.port, targetPort: p.targetPort, protocol: p.protocol })),
+                    type: service.spec?.type || 'ClusterIP',
+                }
+            });
+        }
+        catch (error) {
+            if (error.statusCode === 404) {
+                components.push({
+                    name: 'Service',
+                    type: 'service',
+                    healthy: false,
+                    status: 'NotFound',
+                    reason: 'Service does not exist',
+                    details: {}
+                });
+            }
+            else {
+                logger_1.logger.warn(`Failed to get service health for ${name}:`, error);
+                components.push({
+                    name: 'Service',
+                    type: 'service',
+                    healthy: false,
+                    status: 'Unknown',
+                    reason: 'Failed to fetch service status',
+                    details: { error: String(error) }
+                });
+            }
+        }
+        // Check PVC
+        try {
+            const pvcName = `${name}-pvc`;
+            const pvc = await this.coreV1Api.readNamespacedPersistentVolumeClaim({ name: pvcName, namespace });
+            const phase = pvc.status?.phase;
+            let healthy = false;
+            let reason = '';
+            if (phase === 'Bound') {
+                healthy = true;
+                reason = 'PVC is bound to a persistent volume';
+            }
+            else if (phase === 'Pending') {
+                healthy = false;
+                reason = 'PVC is pending - waiting for volume provisioning';
+            }
+            else if (phase === 'Lost') {
+                healthy = false;
+                reason = 'PVC has lost its underlying volume';
+            }
+            else {
+                healthy = false;
+                reason = `PVC is in ${phase} state`;
+            }
+            components.push({
+                name: 'PersistentVolumeClaim',
+                type: 'pvc',
+                healthy,
+                status: phase || 'Unknown',
+                reason,
+                details: {
+                    capacity: pvc.status?.capacity?.storage || 'Unknown',
+                    storageClass: pvc.spec?.storageClassName || 'default',
+                    accessModes: pvc.spec?.accessModes || [],
+                    volumeName: pvc.spec?.volumeName || 'None',
+                }
+            });
+        }
+        catch (error) {
+            if (error.statusCode === 404) {
+                components.push({
+                    name: 'PersistentVolumeClaim',
+                    type: 'pvc',
+                    healthy: false,
+                    status: 'NotFound',
+                    reason: 'PVC does not exist',
+                    details: {}
+                });
+            }
+            else {
+                logger_1.logger.warn(`Failed to get PVC health for ${name}-pvc:`, error);
+                components.push({
+                    name: 'PersistentVolumeClaim',
+                    type: 'pvc',
+                    healthy: false,
+                    status: 'Unknown',
+                    reason: 'Failed to fetch PVC status',
+                    details: { error: String(error) }
+                });
+            }
+        }
+        // Check Pods
+        try {
+            const pods = await this.coreV1Api.listNamespacedPod({
+                namespace,
+                labelSelector: `app=${name}`,
+            });
+            if (pods.items.length === 0) {
+                components.push({
+                    name: 'Pods',
+                    type: 'pod',
+                    healthy: true,
+                    status: 'NoPods',
+                    reason: 'No pods found (workspace may be stopped)',
+                    details: { count: 0 }
+                });
+            }
+            else {
+                const podStatuses = pods.items.map(pod => {
+                    const containerStatuses = pod.status?.containerStatuses || [];
+                    const phase = pod.status?.phase;
+                    const conditions = pod.status?.conditions || [];
+                    const readyCondition = conditions.find(c => c.type === 'Ready');
+                    let healthy = phase === 'Running' && readyCondition?.status === 'True';
+                    let reason = '';
+                    if (phase === 'Pending') {
+                        const waitingContainers = containerStatuses.filter(c => c.state?.waiting);
+                        if (waitingContainers.length > 0) {
+                            const waiting = waitingContainers[0].state?.waiting;
+                            reason = waiting?.message || waiting?.reason || 'Pod is pending';
+                        }
+                        else {
+                            reason = 'Pod is pending';
+                        }
+                    }
+                    else if (phase === 'Failed') {
+                        reason = pod.status?.message || 'Pod has failed';
+                    }
+                    else if (phase === 'Running') {
+                        const notReadyContainers = containerStatuses.filter(c => !c.ready);
+                        if (notReadyContainers.length > 0) {
+                            healthy = false;
+                            reason = `${notReadyContainers.length} container(s) not ready`;
+                        }
+                        else {
+                            reason = 'All containers are running and ready';
+                        }
+                    }
+                    else {
+                        reason = `Pod is in ${phase} state`;
+                    }
+                    return {
+                        name: pod.metadata?.name || 'unknown',
+                        healthy,
+                        phase: phase || 'Unknown',
+                        reason,
+                        restarts: containerStatuses.reduce((sum, c) => sum + (c.restartCount || 0), 0),
+                    };
+                });
+                const allHealthy = podStatuses.every(p => p.healthy);
+                const healthyCount = podStatuses.filter(p => p.healthy).length;
+                components.push({
+                    name: 'Pods',
+                    type: 'pod',
+                    healthy: allHealthy,
+                    status: allHealthy ? 'Running' : 'Degraded',
+                    reason: allHealthy
+                        ? `All ${pods.items.length} pod(s) are healthy`
+                        : `${healthyCount} of ${pods.items.length} pod(s) are healthy`,
+                    details: {
+                        pods: podStatuses,
+                        count: pods.items.length,
+                    }
+                });
+            }
+        }
+        catch (error) {
+            logger_1.logger.warn(`Failed to get pod health for ${name}:`, error);
+            components.push({
+                name: 'Pods',
+                type: 'pod',
+                healthy: false,
+                status: 'Unknown',
+                reason: 'Failed to fetch pod status',
+                details: { error: String(error) }
+            });
+        }
+        return components;
+    }
     // Service operations
     async createService(namespace, name, labels = {}) {
         try {
