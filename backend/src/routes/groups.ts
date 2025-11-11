@@ -94,20 +94,26 @@ router.post('/',
         namespace: createRequest.namespace,
         resourceQuota,
       });
-      
+
       // Create Kubernetes namespace and resources
       try {
         await kubernetesService.createNamespace(createRequest.namespace, {
           'vscode-platform/group-id': groupId,
           'vscode-platform/group-name': createRequest.name,
         });
-        
+
         await kubernetesService.createResourceQuota(createRequest.namespace, resourceQuota);
-        
+
         // Create NetworkPolicy for isolation (implementation depends on your network setup)
         // await kubernetesService.createNetworkPolicy(createRequest.namespace);
-        
-        logger.info(`Group created: ${groupId} with namespace ${createRequest.namespace}`);
+
+        // Add the creator to the group
+        await userService.addUserToGroup(user.id, groupId);
+
+        // Update member count
+        await dynamodbService.updateGroup(groupId, { memberCount: 1 });
+
+        logger.info(`Group created: ${groupId} with namespace ${createRequest.namespace}, creator ${user.email} added as member`);
         res.status(201).json(group);
       } catch (k8sError) {
         // Clean up database record if K8s creation fails

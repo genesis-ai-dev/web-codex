@@ -6,29 +6,32 @@ import { User, JwtPayload } from '../types';
 class UserService {
   async getOrCreateUser(jwtPayload: JwtPayload): Promise<User> {
     try {
-      // Determine admin status from JWT groups (Cognito groups)
+      // Determine admin status from JWT groups (Cognito groups like "platform-admins")
+      // These are OAuth provider groups, NOT application groups
       const isAdmin = (jwtPayload.groups || []).includes('platform-admins');
 
       // Try to find existing user by email
       let user = await dynamodbService.getUserByEmail(jwtPayload.email);
 
       if (!user) {
-        // Create new user
+        // Create new user with empty application groups array
+        // Application groups (grp_*) must be assigned via addUserToGroup, not from JWT
         user = await dynamodbService.createUser({
           id: `usr_${uuidv4().replace(/-/g, '')}`,
           username: jwtPayload.username || jwtPayload.email.split('@')[0],
           email: jwtPayload.email,
-          groups: jwtPayload.groups || [],
-          isAdmin: isAdmin, // Set from Cognito groups
+          groups: [], // Start with no application groups
+          isAdmin: isAdmin, // Set from OAuth/Cognito groups
         });
 
         logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
       } else {
-        // Update user's last login, groups, and admin status from JWT
+        // Update user's last login and admin status from JWT
+        // IMPORTANT: Do NOT overwrite application groups with JWT groups
         user = await dynamodbService.updateUser(user.id, {
           lastLoginAt: new Date(),
-          groups: jwtPayload.groups || user.groups, // Use JWT groups if available
-          isAdmin: isAdmin, // Always sync admin status from Cognito
+          isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
+          // groups field is intentionally NOT updated here - preserve application groups
         });
       }
 
