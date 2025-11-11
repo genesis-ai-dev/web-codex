@@ -757,8 +757,10 @@ class KubernetesService {
         const response = await this.networkingV1Api.readNamespacedIngress({ name: ingressName, namespace });
         ingress = response;
         isUpdate = true;
-      } catch (error) {
-        if (error.statusCode !== 404) {
+      } catch (error: any) {
+        // Check multiple possible locations for the 404 status code
+        const statusCode = error.statusCode || error.response?.statusCode || error.code;
+        if (statusCode !== 404) {
           throw error;
         }
         // Ingress doesn't exist, create new one
@@ -896,8 +898,10 @@ class KubernetesService {
         await this.networkingV1Api.replaceNamespacedIngress({ name: ingressName, namespace, body: ingress });
         logger.info(`Ingress rule removed: path ${pathPrefix} from ${ingressName}`);
       }
-    } catch (error) {
-      if (error.statusCode === 404) {
+    } catch (error: any) {
+      // Check multiple possible locations for the 404 status code
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
         logger.warn(`Ingress not found for deletion: ${ingressName}`);
         return;
       }
