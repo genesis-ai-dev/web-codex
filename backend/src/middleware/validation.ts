@@ -90,7 +90,7 @@ export const commonSchemas = {
         'string.pattern.base': 'Name must be a valid Kubernetes name (lowercase alphanumeric with hyphens)',
       }),
     displayName: Joi.string().min(1).max(100).required(),
-    description: Joi.string().max(500).optional(),
+    description: Joi.string().max(500).allow('').optional(),
     namespace: Joi.string()
       .regex(/^group-[a-z0-9]([-a-z0-9]*[a-z0-9])?$/)
       .required()
@@ -127,7 +127,7 @@ export const commonSchemas = {
       .min(1)
       .max(63)
       .required(),
-    description: Joi.string().max(500).optional(),
+    description: Joi.string().max(500).allow('').optional(),
     groupId: Joi.string().required(),
     image: Joi.string().default('codercom/code-server:latest'),
     resources: Joi.object({

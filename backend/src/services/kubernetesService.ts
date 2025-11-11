@@ -83,6 +83,9 @@ class KubernetesService {
 
       await this.coreV1Api.createNamespace({ body: namespace });
       logger.info(`Namespace created: ${name}`);
+
+      // Wait for namespace to be fully ready
+      await this.waitForNamespace(name, 30000); // 30 second timeout
     } catch (error) {
       if (error.statusCode === 409) {
         logger.warn(`Namespace already exists: ${name}`);
@@ -90,6 +93,27 @@ class KubernetesService {
       }
       throw new KubernetesError(`Failed to create namespace ${name}`, error);
     }
+  }
+
+  private async waitForNamespace(name: string, timeoutMs: number = 30000): Promise<void> {
+    const startTime = Date.now();
+    const pollInterval = 1000; // Check every 1 second
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const namespace = await this.coreV1Api.readNamespace({ name });
+        if (namespace.status?.phase === 'Active') {
+          logger.info(`Namespace ${name} is active and ready`);
+          return;
+        }
+      } catch (error) {
+        // Namespace not ready yet, continue polling
+      }
+
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new KubernetesError(`Timeout waiting for namespace ${name} to become ready`);
   }
   async listNamespaces(): Promise<k8s.V1NamespaceList> {
     try {

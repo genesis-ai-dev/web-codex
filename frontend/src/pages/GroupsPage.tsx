@@ -352,7 +352,12 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     setError(null);
 
     try {
-      await onSubmit(formData);
+      // Remove empty description to avoid validation errors
+      const submitData = {
+        ...formData,
+        description: formData.description?.trim() || undefined,
+      };
+      await onSubmit(submitData);
       // Reset form
       setFormData({
         name: '',
