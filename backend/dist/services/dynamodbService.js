@@ -148,10 +148,11 @@ class DynamoDBService {
     }
     async listUsers(limit = 20, nextToken) {
         try {
+            // Since users have GSI1PK = EMAIL#{email}, we need to scan with a filter
+            // This is less efficient but necessary with current schema
             const params = {
                 TableName: this.tableName,
-                IndexName: 'GSI1',
-                KeyConditionExpression: 'GSI1PK = :entityType',
+                FilterExpression: 'EntityType = :entityType',
                 ExpressionAttributeValues: {
                     ':entityType': 'USER',
                 },
@@ -160,7 +161,7 @@ class DynamoDBService {
             if (nextToken) {
                 params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
             }
-            const result = await this.dynamodb.query(params).promise();
+            const result = await this.dynamodb.scan(params).promise();
             const users = (result.Items || []);
             const responseNextToken = result.LastEvaluatedKey
                 ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')

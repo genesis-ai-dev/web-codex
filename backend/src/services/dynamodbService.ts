@@ -162,10 +162,11 @@ class DynamoDBService {
 
   async listUsers(limit: number = 20, nextToken?: string): Promise<{ users: User[], nextToken?: string }> {
     try {
-      const params: AWS.DynamoDB.DocumentClient.QueryInput = {
+      // Since users have GSI1PK = EMAIL#{email}, we need to scan with a filter
+      // This is less efficient but necessary with current schema
+      const params: AWS.DynamoDB.DocumentClient.ScanInput = {
         TableName: this.tableName,
-        IndexName: 'GSI1',
-        KeyConditionExpression: 'GSI1PK = :entityType',
+        FilterExpression: 'EntityType = :entityType',
         ExpressionAttributeValues: {
           ':entityType': 'USER',
         },
@@ -176,7 +177,7 @@ class DynamoDBService {
         params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
       }
 
-      const result = await this.dynamodb.query(params).promise();
+      const result = await this.dynamodb.scan(params).promise();
 
       const users = (result.Items || []) as User[];
       const responseNextToken = result.LastEvaluatedKey
