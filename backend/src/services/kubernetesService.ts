@@ -141,8 +141,14 @@ class KubernetesService {
     try {
       await this.coreV1Api.readNamespace({ name });
       return true;
-    } catch (error) {
-      if (error.statusCode === 404) {
+    } catch (error: any) {
+      // Check multiple possible locations for the 404 status code
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
+        return false;
+      }
+      // Also check if the error body indicates not found
+      if (error.body && typeof error.body === 'string' && error.body.includes('"code":404')) {
         return false;
       }
       throw new KubernetesError(`Failed to check namespace ${name}`, error);
