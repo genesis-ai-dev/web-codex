@@ -129,6 +129,10 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
             // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
             await kubernetesService_1.kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
             await kubernetesService_1.kubernetesService.createService(namespace, k8sName);
+            // Create or update Ingress rule for this workspace
+            const ingressName = `${namespace}-ingress`;
+            const pathPrefix = `/${namespace}/${k8sName}`;
+            await kubernetesService_1.kubernetesService.createOrUpdateIngressRule(namespace, ingressName, k8sName, k8sName, pathPrefix);
             // Update status to stopped (created but not running)
             const updatedWorkspace = await dynamodbService_1.dynamodbService.updateWorkspace(workspaceId, {
                 status: types_1.WorkspaceStatus.STOPPED,
@@ -137,7 +141,20 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
             res.status(201).json(updatedWorkspace);
         }
         catch (k8sError) {
-            // Clean up database record if K8s creation fails
+            // Clean up any resources that were created before the failure
+            logger_1.logger.error(`Workspace creation failed, cleaning up resources for ${workspaceId}:`, k8sError);
+            try {
+                await kubernetesService_1.kubernetesService.deleteDeployment(namespace, k8sName);
+                await kubernetesService_1.kubernetesService.deleteNamespacedService(k8sName, namespace);
+                // Ingress cleanup handled in deleteIngressRule (handles 404 gracefully)
+                const ingressName = `${namespace}-ingress`;
+                const pathPrefix = `/${namespace}/${k8sName}`;
+                await kubernetesService_1.kubernetesService.deleteIngressRule(namespace, ingressName, pathPrefix);
+            }
+            catch (cleanupError) {
+                logger_1.logger.warn(`Failed to clean up K8s resources during rollback for ${workspaceId}:`, cleanupError);
+            }
+            // Clean up database record
             await dynamodbService_1.dynamodbService.deleteWorkspace(workspaceId);
             throw k8sError;
         }
@@ -235,6 +252,10 @@ router.delete('/:workspaceId', rateLimiting_1.operationRateLimits.deleteWorkspac
                 await kubernetesService_1.kubernetesService.deleteNamespacedService(k8sName, namespace);
                 // TODO: Re-enable PVC deletion once storage is configured
                 // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+                // Delete Ingress rule for this workspace
+                const ingressName = `${namespace}-ingress`;
+                const pathPrefix = `/${namespace}/${k8sName}`;
+                await kubernetesService_1.kubernetesService.deleteIngressRule(namespace, ingressName, pathPrefix);
                 logger_1.logger.info(`Kubernetes resources deleted for workspace ${workspaceId} in namespace ${namespace}`);
             }
             catch (k8sError) {

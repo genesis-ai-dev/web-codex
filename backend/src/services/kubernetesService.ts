@@ -281,7 +281,7 @@ class KubernetesService {
                   '--host=0.0.0.0',
                   '--port=8000',
                   '--connection-token=12345', // TODO: Generate secure token
-                  `--server-base-path=/${namespace}`,
+                  `--server-base-path=/${namespace}/${name}`,
                 ],
                 ports: [{
                   containerPort: 8000,

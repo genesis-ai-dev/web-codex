@@ -81,6 +81,8 @@ class KubernetesService {
             logger_1.logger.info('AppsV1Api client created');
             this.rbacV1Api = this.kc.makeApiClient(k8s.RbacAuthorizationV1Api);
             logger_1.logger.info('RbacAuthorizationV1Api client created');
+            this.networkingV1Api = this.kc.makeApiClient(k8s.NetworkingV1Api);
+            logger_1.logger.info('NetworkingV1Api client created');
             this.metricsClient = new k8s.Metrics(this.kc);
             logger_1.logger.info('Metrics client created');
             logger_1.logger.info('Kubernetes service initialized successfully');
@@ -735,6 +737,154 @@ class KubernetesService {
                 return;
             }
             throw new errors_1.KubernetesError(`Failed to delete service ${name}`, error);
+        }
+    }
+    // Ingress operations
+    async createOrUpdateIngressRule(namespace, ingressName, workspaceName, serviceName, pathPrefix, host = 'loadbalancer.frontierrnd.com') {
+        try {
+            // Try to get existing ingress
+            let ingress;
+            let isUpdate = false;
+            try {
+                const response = await this.networkingV1Api.readNamespacedIngress({ name: ingressName, namespace });
+                ingress = response;
+                isUpdate = true;
+            }
+            catch (error) {
+                // Check multiple possible locations for the 404 status code
+                const statusCode = error.statusCode || error.response?.statusCode || error.code;
+                if (statusCode !== 404) {
+                    throw error;
+                }
+                // Ingress doesn't exist, create new one
+                ingress = {
+                    apiVersion: 'networking.k8s.io/v1',
+                    kind: 'Ingress',
+                    metadata: {
+                        name: ingressName,
+                        namespace,
+                        annotations: {
+                            'cert-manager.io/issuer': 'letsencrypt-prod',
+                        },
+                    },
+                    spec: {
+                        ingressClassName: 'nginx',
+                        rules: [],
+                        tls: [
+                            {
+                                hosts: [host],
+                                secretName: `${namespace}-tls`,
+                            },
+                        ],
+                    },
+                };
+            }
+            // Ensure rules array exists
+            if (!ingress.spec) {
+                ingress.spec = { rules: [] };
+            }
+            if (!ingress.spec.rules) {
+                ingress.spec.rules = [];
+            }
+            // Find or create rule for the host
+            let rule = ingress.spec.rules.find((r) => r.host === host);
+            if (!rule) {
+                rule = {
+                    host,
+                    http: {
+                        paths: [],
+                    },
+                };
+                ingress.spec.rules.push(rule);
+            }
+            // Ensure paths array exists
+            if (!rule.http) {
+                rule.http = { paths: [] };
+            }
+            if (!rule.http.paths) {
+                rule.http.paths = [];
+            }
+            // Check if path already exists
+            const existingPathIndex = rule.http.paths.findIndex((p) => p.path === pathPrefix);
+            const newPath = {
+                path: pathPrefix,
+                pathType: 'Prefix',
+                backend: {
+                    service: {
+                        name: serviceName,
+                        port: {
+                            number: 80,
+                        },
+                    },
+                },
+            };
+            if (existingPathIndex >= 0) {
+                // Update existing path
+                rule.http.paths[existingPathIndex] = newPath;
+            }
+            else {
+                // Add new path
+                rule.http.paths.push(newPath);
+            }
+            // Create or update the ingress
+            if (isUpdate) {
+                await this.networkingV1Api.replaceNamespacedIngress({ name: ingressName, namespace, body: ingress });
+                logger_1.logger.info(`Ingress rule updated: ${ingressName} for workspace ${workspaceName} at path ${pathPrefix}`);
+            }
+            else {
+                await this.networkingV1Api.createNamespacedIngress({ namespace, body: ingress });
+                logger_1.logger.info(`Ingress created: ${ingressName} for workspace ${workspaceName} at path ${pathPrefix}`);
+            }
+        }
+        catch (error) {
+            throw new errors_1.KubernetesError(`Failed to create/update ingress rule for ${workspaceName}`, error);
+        }
+    }
+    async deleteIngressRule(namespace, ingressName, pathPrefix, host = 'loadbalancer.frontierrnd.com') {
+        try {
+            // Get existing ingress
+            const response = await this.networkingV1Api.readNamespacedIngress({ name: ingressName, namespace });
+            const ingress = response;
+            if (!ingress.spec?.rules) {
+                logger_1.logger.warn(`No rules found in ingress ${ingressName}`);
+                return;
+            }
+            // Find the rule for the host
+            const rule = ingress.spec.rules.find((r) => r.host === host);
+            if (!rule?.http?.paths) {
+                logger_1.logger.warn(`No paths found for host ${host} in ingress ${ingressName}`);
+                return;
+            }
+            // Remove the path
+            const originalLength = rule.http.paths.length;
+            rule.http.paths = rule.http.paths.filter((p) => p.path !== pathPrefix);
+            if (rule.http.paths.length === originalLength) {
+                logger_1.logger.warn(`Path ${pathPrefix} not found in ingress ${ingressName}`);
+                return;
+            }
+            // If no paths left in this rule, remove the rule
+            if (rule.http.paths.length === 0) {
+                ingress.spec.rules = ingress.spec.rules.filter((r) => r.host !== host);
+            }
+            // If no rules left, delete the entire ingress
+            if (ingress.spec.rules.length === 0) {
+                await this.networkingV1Api.deleteNamespacedIngress({ name: ingressName, namespace });
+                logger_1.logger.info(`Ingress deleted: ${ingressName} (no rules remaining)`);
+            }
+            else {
+                // Update the ingress with the path removed
+                await this.networkingV1Api.replaceNamespacedIngress({ name: ingressName, namespace, body: ingress });
+                logger_1.logger.info(`Ingress rule removed: path ${pathPrefix} from ${ingressName}`);
+            }
+        }
+        catch (error) {
+            // Check multiple possible locations for the 404 status code
+            const statusCode = error.statusCode || error.response?.statusCode || error.code;
+            if (statusCode === 404) {
+                logger_1.logger.warn(`Ingress not found for deletion: ${ingressName}`);
+                return;
+            }
+            throw new errors_1.KubernetesError(`Failed to delete ingress rule at path ${pathPrefix}`, error);
         }
     }
     // PVC operations
