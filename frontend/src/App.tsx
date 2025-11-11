@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { WorkspacesPage } from './pages/WorkspacesPage';
+import { GroupsPage } from './pages/GroupsPage';
 import { AuthConfig } from './types';
 import './styles/index.css';
 
@@ -30,7 +31,7 @@ function App() {
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/workspaces" element={<ProtectedRoute><WorkspacesPage /></ProtectedRoute>} />
-            <Route path="/groups" element={<ProtectedRoute><GroupsPlaceholder /></ProtectedRoute>} />
+            <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminPlaceholder /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -93,39 +94,6 @@ const AuthCallbackPage: React.FC = () => {
 };
 
 // Placeholder components for routes not yet implemented
-const GroupsPlaceholder: React.FC = () => {
-  const { Layout } = require('./components/Layout');
-  const { Card, CardContent } = require('./components/Card');
-  const { Button } = require('./components/Button');
-
-  return (
-    <Layout>
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <Card className="max-w-md mx-auto">
-            <CardContent className="text-center py-12">
-              <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Groups Management
-              </h3>
-              <p className="text-gray-600 mb-4">
-                This feature is coming soon. You'll be able to manage groups, members, and permissions here.
-              </p>
-              <Button>
-                Coming Soon
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </Layout>
-  );
-};
-
 const AdminPlaceholder: React.FC = () => {
   const { Layout } = require('./components/Layout');
   const { Card, CardContent } = require('./components/Card');
