@@ -30,7 +30,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
         email: oidcAuth.user.profile.email || '',
         name: oidcAuth.user.profile.name || oidcAuth.user.profile.email || '',
         groups: (oidcAuth.user.profile['cognito:groups'] as string[]) || [],
-        isAdmin: ((oidcAuth.user.profile['cognito:groups'] as string[]) || []).includes('Admins'),
+        isAdmin: ((oidcAuth.user.profile['cognito:groups'] as string[]) || []).includes('platform-admins'),
       }
     : null;
 
