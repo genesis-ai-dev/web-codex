@@ -150,6 +150,9 @@ jobs:
     needs: [docker]
     permissions:
       id-token: write
+    defaults:
+      run:
+        working-directory: ./
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
