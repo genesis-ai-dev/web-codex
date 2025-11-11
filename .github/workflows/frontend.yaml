@@ -144,3 +144,25 @@ jobs:
           REACT_APP_AUTH_AUTHORITY=${{ secrets.COGNITO_AUTHORITY }}
           REACT_APP_AUTH_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID }}
           REACT_APP_COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker]
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::070279951358:role/frontier-rnd-cluster-github-actions-deployment
+          aws-region: ca-west-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ca-west-1 --name frontier-rnd-cluster
+      - name: get sha
+        id: vars
+        run: echo "::set-output name=sha::$(echo ${GITHUB_SHA} | cut -c1-7)"
+      
+      
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/frontend-deployment frontend=main-${{ steps.vars.outputs.sha }} -n management-app
