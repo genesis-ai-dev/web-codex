@@ -175,7 +175,19 @@ router.post('/',
         logger.info(`Workspace created: ${workspaceId} for user ${user.id}`);
         res.status(201).json(updatedWorkspace);
       } catch (k8sError) {
-        // Clean up database record if K8s creation fails
+        // Clean up any resources that were created before the failure
+        logger.error(`Workspace creation failed, cleaning up resources for ${workspaceId}:`, k8sError);
+        try {
+          await kubernetesService.deleteDeployment(namespace, k8sName);
+          await kubernetesService.deleteNamespacedService(k8sName, namespace);
+          // Ingress cleanup handled in deleteIngressRule (handles 404 gracefully)
+          const ingressName = `${namespace}-ingress`;
+          const pathPrefix = `/${namespace}/${k8sName}`;
+          await kubernetesService.deleteIngressRule(namespace, ingressName, pathPrefix);
+        } catch (cleanupError) {
+          logger.warn(`Failed to clean up K8s resources during rollback for ${workspaceId}:`, cleanupError);
+        }
+        // Clean up database record
         await dynamodbService.deleteWorkspace(workspaceId);
         throw k8sError;
       }
