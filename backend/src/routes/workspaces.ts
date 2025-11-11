@@ -155,12 +155,23 @@ router.post('/',
         // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
         await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
         await kubernetesService.createService(namespace, k8sName);
-        
+
+        // Create or update Ingress rule for this workspace
+        const ingressName = `${namespace}-ingress`;
+        const pathPrefix = `/${namespace}/${k8sName}`;
+        await kubernetesService.createOrUpdateIngressRule(
+          namespace,
+          ingressName,
+          k8sName,
+          k8sName,
+          pathPrefix
+        );
+
         // Update status to stopped (created but not running)
         const updatedWorkspace = await dynamodbService.updateWorkspace(workspaceId, {
           status: WorkspaceStatus.STOPPED,
         });
-        
+
         logger.info(`Workspace created: ${workspaceId} for user ${user.id}`);
         res.status(201).json(updatedWorkspace);
       } catch (k8sError) {
@@ -284,6 +295,12 @@ router.delete('/:workspaceId',
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
           // TODO: Re-enable PVC deletion once storage is configured
           // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+
+          // Delete Ingress rule for this workspace
+          const ingressName = `${namespace}-ingress`;
+          const pathPrefix = `/${namespace}/${k8sName}`;
+          await kubernetesService.deleteIngressRule(namespace, ingressName, pathPrefix);
+
           logger.info(`Kubernetes resources deleted for workspace ${workspaceId} in namespace ${namespace}`);
         } catch (k8sError) {
           logger.error(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);
