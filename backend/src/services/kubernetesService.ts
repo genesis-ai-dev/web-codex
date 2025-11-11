@@ -151,28 +151,39 @@ class KubernetesService {
 
   // Resource quota operations
   async createResourceQuota(namespace: string, quota: any): Promise<void> {
-    try {
-      const resourceQuota: k8s.V1ResourceQuota = {
-        metadata: {
-          name: `${namespace}-quota`,
-          namespace,
-        },
-        spec: {
-          hard: {
-            'requests.cpu': quota.cpu,
-            'requests.memory': quota.memory,
-            'limits.cpu': quota.cpu,
-            'limits.memory': quota.memory,
-            'persistentvolumeclaims': quota.storage,
-            pods: quota.pods.toString(),
-          },
-        },
-      };
+    const maxRetries = 5;
+    const retryDelay = 2000; // 2 seconds
 
-      await this.coreV1Api.createNamespacedResourceQuota({ namespace, body: resourceQuota });
-      logger.info(`Resource quota created for namespace: ${namespace}`);
-    } catch (error) {
-      throw new KubernetesError(`Failed to create resource quota for ${namespace}`, error);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const resourceQuota: k8s.V1ResourceQuota = {
+          metadata: {
+            name: `${namespace}-quota`,
+            namespace,
+          },
+          spec: {
+            hard: {
+              'requests.cpu': quota.cpu,
+              'requests.memory': quota.memory,
+              'limits.cpu': quota.cpu,
+              'limits.memory': quota.memory,
+              'persistentvolumeclaims': quota.storage,
+              pods: quota.pods.toString(),
+            },
+          },
+        };
+
+        await this.coreV1Api.createNamespacedResourceQuota({ namespace, body: resourceQuota });
+        logger.info(`Resource quota created for namespace: ${namespace}`);
+        return;
+      } catch (error) {
+        if (error.statusCode === 404 && attempt < maxRetries) {
+          logger.warn(`Namespace ${namespace} not ready yet, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        throw new KubernetesError(`Failed to create resource quota for ${namespace}`, error);
+      }
     }
   }
 
