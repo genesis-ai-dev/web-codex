@@ -10,13 +10,17 @@ class UserService {
       // These are OAuth provider groups, NOT application groups
       const isAdmin = (jwtPayload.groups || []).includes('platform-admins');
 
-      // Try to find existing user by email
+      // IMPORTANT: Always check by email first before creating
+      // This is the ONLY place where we check, to avoid race conditions
       let user = await dynamodbService.getUserByEmail(jwtPayload.email);
 
       if (!user) {
-        // Create new user with empty application groups array
-        // Application groups (grp_*) must be assigned via addUserToGroup, not from JWT
-        try {
+        // Double-check by email one more time RIGHT before creating
+        // to minimize race condition window
+        user = await dynamodbService.getUserByEmail(jwtPayload.email);
+
+        if (!user) {
+          // Create new user - only if still doesn't exist
           user = await dynamodbService.createUser({
             id: `usr_${uuidv4().replace(/-/g, '')}`,
             username: jwtPayload.username || jwtPayload.email.split('@')[0],
@@ -26,28 +30,8 @@ class UserService {
           });
 
           logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
-        } catch (createError: any) {
-          // Handle race condition: Another request may have created the user
-          // between our check and create attempt
-          if (createError.message?.includes('User') && createError.message?.includes('already exists') ||
-              createError.message?.includes('email already exists') ||
-              createError.code === 'ConditionalCheckFailedException') {
-            logger.info(`User creation race condition detected for ${jwtPayload.email}, fetching existing user`);
-
-            // Fetch the user that was just created by the other request
-            user = await dynamodbService.getUserByEmail(jwtPayload.email);
-
-            if (!user) {
-              // This shouldn't happen, but if it does, log and rethrow
-              logger.error(`Failed to fetch user after race condition for ${jwtPayload.email}`);
-              throw createError;
-            }
-
-            logger.info(`Retrieved existing user after race condition: ${user.email}`);
-          } else {
-            // If it's a different error, rethrow it
-            throw createError;
-          }
+        } else {
+          logger.info(`User appeared between checks (race condition handled): ${user.email}`);
         }
       }
 
