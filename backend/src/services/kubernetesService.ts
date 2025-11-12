@@ -1025,6 +1025,10 @@ class KubernetesService {
   }
 
   private parseCPU(cpu: string): number {
+    // Handle nanocores (n), millicores (m), or cores (plain number)
+    if (cpu.endsWith('n')) {
+      return parseFloat(cpu.slice(0, -1)) / 1000000000;
+    }
     if (cpu.endsWith('m')) {
       return parseFloat(cpu.slice(0, -1)) / 1000;
     }
