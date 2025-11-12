@@ -26,6 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "@kubernetes/client-node": "^1.4.0",
+    "@types/ws": "^8.18.1",
     "aws-jwt-verify": "^4.0.1",
     "aws-sdk": "^2.1498.0",
     "compression": "^1.7.4",
@@ -41,7 +42,8 @@
     "morgan": "^1.10.0",
     "redis": "^4.6.10",
     "uuid": "^9.0.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

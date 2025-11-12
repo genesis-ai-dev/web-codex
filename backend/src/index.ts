@@ -1,7 +1,9 @@
 import 'dotenv/config';
+import http from 'http';
 import app from './app';
 import { config } from './config';
 import { logger } from './config/logger';
+import { setupWebSocketServer } from './websocket';
 
 // Log startup immediately
 logger.info('=== Application Starting ===');
@@ -43,11 +45,20 @@ logger.info('Attempting to start HTTP server...');
 const port = config.port;
 
 try {
-  const server = app.listen(port, () => {
+  // Create HTTP server
+  const server = http.createServer(app);
+
+  // Setup WebSocket server
+  setupWebSocketServer(server);
+  logger.info('WebSocket server configured');
+
+  // Start listening
+  server.listen(port, () => {
     logger.info('=== Server Started Successfully ===');
     logger.info(`VSCode Platform API server running on port ${port}`);
     logger.info(`Environment: ${config.nodeEnv}`);
     logger.info(`Health check available at: http://localhost:${port}/api/health/live`);
+    logger.info(`WebSocket endpoint available at: ws://localhost:${port}/api/admin/workspaces/:workspaceId/exec`);
   });
 
   server.on('error', (error: NodeJS.ErrnoException) => {

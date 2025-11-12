@@ -61,6 +61,30 @@ async function verifyCognitoToken(token: string): Promise<JwtPayload> {
   }
 }
 
+/**
+ * Verify JWT token and return user (for use in WebSocket handlers)
+ */
+export async function verifyToken(token: string): Promise<User> {
+  // Determine token type (simplified - in production, you might use different endpoints or headers)
+  let jwtPayload: JwtPayload;
+
+  try {
+    // Try Cognito first
+    jwtPayload = await verifyCognitoToken(token);
+  } catch (cognitoError) {
+    try {
+      // Fallback to Google
+      jwtPayload = await verifyGoogleToken(token);
+    } catch (googleError) {
+      throw new AuthenticationError('Invalid token');
+    }
+  }
+
+  // Get or create user from database
+  const user = await userService.getOrCreateUser(jwtPayload);
+  return user;
+}
+
 export async function authenticate(
   req: AuthenticatedRequest,
   res: Response,
@@ -68,31 +92,14 @@ export async function authenticate(
 ): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new AuthenticationError('Authentication token required');
     }
 
     const token = authHeader.split(' ')[1];
-    
-    // Determine token type (simplified - in production, you might use different endpoints or headers)
-    let jwtPayload: JwtPayload;
-    
-    try {
-      // Try Cognito first
-      jwtPayload = await verifyCognitoToken(token);
-    } catch (cognitoError) {
-      try {
-        // Fallback to Google
-        jwtPayload = await verifyGoogleToken(token);
-      } catch (googleError) {
-        throw new AuthenticationError('Invalid token');
-      }
-    }
+    const user = await verifyToken(token);
 
-    // Get or create user from database
-    const user = await userService.getOrCreateUser(jwtPayload);
-    
     req.user = user;
     next();
   } catch (error) {

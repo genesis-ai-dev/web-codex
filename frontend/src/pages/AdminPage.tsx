@@ -6,7 +6,7 @@ import { GroupsPage } from './GroupsPage';
 import { Card, CardContent } from '../components/Card';
 import { cn } from '../utils';
 
-type AdminTab = 'users' | 'groups' | 'audit-logs' | 'settings' | 'monitoring';
+type AdminTab = 'users' | 'groups' | 'workspaces' | 'audit-logs' | 'settings' | 'monitoring';
 
 interface TabConfig {
   id: AdminTab;
@@ -30,6 +30,15 @@ const tabs: TabConfig[] = [
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'workspaces',
+    name: 'Workspaces',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     ),
   },
@@ -92,6 +101,8 @@ export const AdminPage: React.FC = () => {
         return <UsersTabContent />;
       case 'groups':
         return <GroupsTabContent />;
+      case 'workspaces':
+        return <WorkspacesTabContent />;
       case 'audit-logs':
         return <AuditLogsPlaceholder />;
       case 'settings':
@@ -156,6 +167,161 @@ const UsersTabContent: React.FC = () => {
 
 const GroupsTabContent: React.FC = () => {
   return <GroupsPage isEmbedded />;
+};
+
+const WorkspacesTabContent: React.FC = () => {
+  const [workspaces, setWorkspaces] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [terminalWorkspace, setTerminalWorkspace] = React.useState<any | null>(null);
+
+  React.useEffect(() => {
+    loadWorkspaces();
+  }, []);
+
+  const loadWorkspaces = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await require('../services/api').apiService.adminGetAllWorkspaces();
+      setWorkspaces(data);
+    } catch (err) {
+      console.error('Failed to load workspaces:', err);
+      setError('Failed to load workspaces');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading workspaces...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="max-w-md mx-auto">
+        <CardContent className="text-center py-12">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={loadWorkspaces}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            Try Again
+          </button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-900">All Workspaces</h2>
+        <p className="text-sm text-gray-600 mt-1">
+          View and manage all workspaces across all users ({workspaces.length} total)
+        </p>
+      </div>
+
+      {workspaces.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Workspaces</h3>
+            <p className="text-gray-600">No workspaces have been created yet.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <ul className="divide-y divide-gray-200">
+            {workspaces.map((workspace) => (
+              <li key={workspace.id}>
+                <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center">
+                        <h3 className="text-sm font-medium text-primary-600 truncate">
+                          {workspace.name}
+                        </h3>
+                        <span className={`ml-3 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          workspace.status === 'running' ? 'bg-green-100 text-green-800' :
+                          workspace.status === 'stopped' ? 'bg-gray-100 text-gray-800' :
+                          workspace.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {workspace.status}
+                        </span>
+                      </div>
+                      {workspace.description && (
+                        <p className="mt-1 text-sm text-gray-600">{workspace.description}</p>
+                      )}
+                      <div className="mt-2 flex items-center text-sm text-gray-500">
+                        <svg className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {workspace.userName || workspace.userEmail}
+                        <span className="mx-2">•</span>
+                        <svg className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        {workspace.groupName}
+                      </div>
+                    </div>
+                    <div className="ml-4 flex-shrink-0">
+                      {workspace.status === 'running' && (
+                        <button
+                          onClick={() => setTerminalWorkspace(workspace)}
+                          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Open Terminal
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Terminal Modal */}
+      {terminalWorkspace && (
+        <React.Suspense fallback={<div>Loading...</div>}>
+          {(() => {
+            const { TerminalModal } = require('../components/TerminalModal');
+            return (
+              <TerminalModal
+                isOpen={true}
+                onClose={() => setTerminalWorkspace(null)}
+                workspaceId={terminalWorkspace.id}
+                workspaceName={terminalWorkspace.name}
+              />
+            );
+          })()}
+        </React.Suspense>
+      )}
+    </>
+  );
 };
 
 const AuditLogsPlaceholder: React.FC = () => {

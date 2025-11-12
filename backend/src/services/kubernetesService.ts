@@ -1047,19 +1047,67 @@ class KubernetesService {
     return parseFloat(memory);
   }
 
+  /**
+   * Execute a command in a pod and return streams for stdin/stdout/stderr
+   */
+  async execIntoPod(
+    namespace: string,
+    podName: string,
+    command: string[]
+  ): Promise<{ stdin: any; stdout: any; stderr: any }> {
+    try {
+      logger.info('Starting exec session:', { namespace, podName, command });
+
+      const exec = new k8s.Exec(this.kc);
+
+      // Create streams for stdin, stdout, stderr
+      const { PassThrough } = await import('stream');
+
+      const stdin = new PassThrough();
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+
+      // Start exec with TTY enabled for interactive shell
+      await exec.exec(
+        namespace,
+        podName,
+        '',  // container name (empty string means first container)
+        command,
+        stdout as any,  // K8s expects Writable but PassThrough works for both
+        stderr as any,
+        stdin as any,
+        true,  // tty
+        (status) => {
+          logger.info('Exec session status:', { namespace, podName, status });
+        }
+      );
+
+      logger.info('Exec session established:', { namespace, podName });
+
+      return { stdin, stdout, stderr };
+    } catch (error) {
+      logger.error('Failed to exec into pod:', {
+        namespace,
+        podName,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new KubernetesError(`Failed to exec into pod ${podName}`, error);
+    }
+  }
+
   private formatMemory(bytes: number): string {
     const units = [
       { name: 'Gi', size: 1024 * 1024 * 1024 },
       { name: 'Mi', size: 1024 * 1024 },
       { name: 'Ki', size: 1024 },
     ];
-    
+
     for (const unit of units) {
       if (bytes >= unit.size) {
         return `${(bytes / unit.size).toFixed(1)}${unit.name}`;
       }
     }
-    
+
     return `${bytes}`;
   }
 }

@@ -218,6 +218,12 @@ class ApiService {
     return response.data;
   }
 
+  // Admin: Get all workspaces across all users
+  async adminGetAllWorkspaces(): Promise<any[]> {
+    const response = await this.client.get('/admin/workspaces');
+    return response.data;
+  }
+
   // Health check
   async getHealth(): Promise<{ status: string; timestamp: string }> {
     const response = await this.client.get('/health');

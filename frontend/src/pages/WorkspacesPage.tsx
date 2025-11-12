@@ -7,17 +7,21 @@ import { StatusBadge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { Input, TextArea, Select } from '../components/Input';
 import { Progress } from '../components/Progress';
+import { TerminalModal } from '../components/TerminalModal';
 import { Workspace, Group, CreateWorkspaceRequest } from '../types';
 import { apiService } from '../services/api';
 import { formatRelativeTime, formatCPU, formatMemory, getErrorMessage } from '../utils';
+import { useAuth } from '../contexts/AuthContext';
 
 export const WorkspacesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [terminalWorkspace, setTerminalWorkspace] = useState<Workspace | null>(null);
 
   useEffect(() => {
     loadData();
@@ -136,6 +140,7 @@ export const WorkspacesPage: React.FC = () => {
                 workspace={workspace}
                 onAction={handleWorkspaceAction}
                 onNavigate={() => navigate(`/workspaces/${workspace.id}`)}
+                onExec={user?.isAdmin ? () => setTerminalWorkspace(workspace) : undefined}
               />
             ))}
           </div>
@@ -163,6 +168,16 @@ export const WorkspacesPage: React.FC = () => {
           onSubmit={handleCreateWorkspace}
           groups={groups}
         />
+
+        {/* Terminal modal */}
+        {terminalWorkspace && (
+          <TerminalModal
+            isOpen={true}
+            onClose={() => setTerminalWorkspace(null)}
+            workspaceId={terminalWorkspace.id}
+            workspaceName={terminalWorkspace.name}
+          />
+        )}
       </div>
     </Layout>
   );
@@ -172,9 +187,10 @@ interface WorkspaceCardProps {
   workspace: Workspace;
   onAction: (workspaceId: string, action: 'start' | 'stop' | 'restart' | 'delete') => void;
   onNavigate: () => void;
+  onExec?: () => void;
 }
 
-const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNavigate }) => {
+const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNavigate, onExec }) => {
   const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
 
   const handleAction = async (action: 'start' | 'stop' | 'restart' | 'delete') => {
@@ -301,6 +317,11 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
                 </Button>
               }
               items={[
+                ...(onExec && workspace.status === 'running' ? [{
+                  label: 'Open Terminal',
+                  onClick: onExec,
+                  loading: false,
+                }] : []),
                 {
                   label: 'Restart',
                   onClick: () => handleAction('restart'),

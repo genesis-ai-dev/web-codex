@@ -453,4 +453,41 @@ router.delete('/users/:userId/groups/:groupId',
   }
 );
 
+// List all workspaces (across all users)
+router.get('/workspaces',
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      logger.info('Admin listing all workspaces');
+
+      // Get all users to find all workspaces
+      const { users } = await dynamodbService.listUsers(10000); // Large limit to get all
+
+      let allWorkspaces = [];
+
+      for (const user of users) {
+        const userWorkspaces = await dynamodbService.getUserWorkspaces(user.id);
+
+        // Enrich workspaces with user info
+        const enrichedWorkspaces = userWorkspaces.map(ws => ({
+          ...ws,
+          userName: user.name || user.username,
+          userEmail: user.email,
+        }));
+
+        allWorkspaces = allWorkspaces.concat(enrichedWorkspaces);
+      }
+
+      // Sort by creation date (newest first)
+      allWorkspaces.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      res.json(allWorkspaces);
+    } catch (error) {
+      logger.error('Failed to list all workspaces:', error);
+      throw error;
+    }
+  }
+);
+
 export default router;

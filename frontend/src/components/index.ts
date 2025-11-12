@@ -17,3 +17,6 @@ export type { BadgeProps, StatusBadgeProps } from './Badge';
 
 export { Progress, ResourceProgress, CircularProgress } from './Progress';
 export type { ProgressProps, ResourceProgressProps, CircularProgressProps } from './Progress';
+
+export { Terminal } from './Terminal';
+export { TerminalModal } from './TerminalModal';
