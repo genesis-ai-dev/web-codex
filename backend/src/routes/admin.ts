@@ -381,18 +381,12 @@ router.post('/users/:userId/demote',
 
 // Add user to group
 router.post('/users/:userId/groups',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
+  validate(commonSchemas.addUserToGroup),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
       const { groupId } = req.body;
-
-      if (!groupId) {
-        return res.status(400).json({
-          message: 'groupId is required',
-          code: 'MISSING_GROUP_ID'
-        });
-      }
 
       const user = await userService.getUserById(userId);
       if (!user) {
@@ -428,7 +422,7 @@ router.post('/users/:userId/groups',
 
 // Remove user from group
 router.delete('/users/:userId/groups/:groupId',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.groupAndUserId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId, groupId } = req.params;

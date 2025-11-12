@@ -72,6 +72,10 @@ export const commonSchemas = {
     id: Joi.string().required(),
   }),
 
+  userId: Joi.object({
+    userId: Joi.string().required(),
+  }),
+
   workspaceId: Joi.object({
     workspaceId: Joi.string().required(),
   }),
@@ -169,6 +173,10 @@ export const commonSchemas = {
   addGroupMember: Joi.object({
     userId: Joi.string().required(),
     role: Joi.string().valid('viewer', 'developer', 'admin').default('developer'),
+  }),
+
+  addUserToGroup: Joi.object({
+    groupId: Joi.string().required(),
   }),
 
   // Query filters
