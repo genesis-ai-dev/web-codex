@@ -9,7 +9,11 @@ import { apiService } from '../services/api';
 import { formatCPU, formatMemory, getErrorMessage } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 
-export const GroupsPage: React.FC = () => {
+interface GroupsPageProps {
+  isEmbedded?: boolean;
+}
+
+export const GroupsPage: React.FC<GroupsPageProps> = ({ isEmbedded = false }) => {
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,47 +60,46 @@ export const GroupsPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading groups...</p>
+  const loadingContent = (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="text-center">
+        <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+        <p className="text-gray-500">Loading groups...</p>
+      </div>
+    </div>
+  );
+
+  const errorContent = (
+    <div className="min-h-[400px] flex items-center justify-center">
+      <Card className="max-w-md">
+        <CardContent className="text-center">
+          <div className="w-12 h-12 bg-error-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-error-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-        </div>
-      </Layout>
-    );
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Failed to load groups
+          </h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={loadGroups}>
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (isLoading) {
+    return isEmbedded ? loadingContent : <Layout>{loadingContent}</Layout>;
   }
 
   if (error) {
-    return (
-      <Layout>
-        <div className="min-h-[400px] flex items-center justify-center">
-          <Card className="max-w-md">
-            <CardContent className="text-center">
-              <div className="w-12 h-12 bg-error-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-error-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Failed to load groups
-              </h3>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={loadGroups}>
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
+    return isEmbedded ? errorContent : <Layout>{errorContent}</Layout>;
   }
 
-  return (
-    <Layout>
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
+  const pageContent = (
+    <div className={isEmbedded ? '' : 'px-4 sm:px-6 lg:px-8 py-8'}>
         {/* Page header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -151,17 +154,18 @@ export const GroupsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Create group modal */}
-        {isAdmin && (
-          <CreateGroupModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-            onSubmit={handleCreateGroup}
-          />
-        )}
-      </div>
-    </Layout>
+      {/* Create group modal */}
+      {isAdmin && (
+        <CreateGroupModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateGroup}
+        />
+      )}
+    </div>
   );
+
+  return isEmbedded ? pageContent : <Layout>{pageContent}</Layout>;
 };
 
 interface GroupCardProps {
