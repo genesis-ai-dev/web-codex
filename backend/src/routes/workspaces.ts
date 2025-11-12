@@ -67,7 +67,7 @@ router.get('/',
       const endIndex = startIndex + (limit || 20);
       const paginatedWorkspaces = workspaces.slice(startIndex, endIndex);
       
-      // Update workspace statuses from Kubernetes
+      // Update workspace statuses and metrics from Kubernetes
       const updatedWorkspaces = await Promise.all(
         paginatedWorkspaces.map(async (workspace) => {
           try {
@@ -80,13 +80,28 @@ router.get('/',
             const k8sName = `workspace-${workspace.id.substring(3)}`.toLowerCase();
             const k8sStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
 
+            // Fetch metrics for running workspaces
+            let metrics: any = undefined;
+            if (k8sStatus === 'running') {
+              try {
+                metrics = await kubernetesService.getNamespaceMetrics(namespace);
+              } catch (metricsError) {
+                logger.warn(`Failed to get metrics for workspace ${workspace.id}:`, metricsError);
+                // Continue without metrics rather than failing the whole request
+              }
+            }
+
             if (k8sStatus !== workspace.status) {
-              // Update status in database
-              const updatedWorkspace = await dynamodbService.updateWorkspace(workspace.id, { status: k8sStatus });
+              // Update status and metrics in database
+              const updatedWorkspace = await dynamodbService.updateWorkspace(workspace.id, {
+                status: k8sStatus,
+                ...(metrics && { usage: metrics })
+              });
               return updatedWorkspace;
             }
 
-            return workspace;
+            // Return workspace with fresh metrics even if status hasn't changed
+            return { ...workspace, ...(metrics && { usage: metrics }) };
           } catch (error) {
             logger.warn(`Failed to get K8s status for workspace ${workspace.id}:`, error);
             return workspace;
