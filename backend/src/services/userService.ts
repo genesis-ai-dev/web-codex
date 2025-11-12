@@ -16,24 +16,48 @@ class UserService {
       if (!user) {
         // Create new user with empty application groups array
         // Application groups (grp_*) must be assigned via addUserToGroup, not from JWT
-        user = await dynamodbService.createUser({
-          id: `usr_${uuidv4().replace(/-/g, '')}`,
-          username: jwtPayload.username || jwtPayload.email.split('@')[0],
-          email: jwtPayload.email,
-          groups: [], // Start with no application groups
-          isAdmin: isAdmin, // Set from OAuth/Cognito groups
-        });
+        try {
+          user = await dynamodbService.createUser({
+            id: `usr_${uuidv4().replace(/-/g, '')}`,
+            username: jwtPayload.username || jwtPayload.email.split('@')[0],
+            email: jwtPayload.email,
+            groups: [], // Start with no application groups
+            isAdmin: isAdmin, // Set from OAuth/Cognito groups
+          });
 
-        logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
-      } else {
-        // Update user's last login and admin status from JWT
-        // IMPORTANT: Do NOT overwrite application groups with JWT groups
-        user = await dynamodbService.updateUser(user.id, {
-          lastLoginAt: new Date().toISOString(),
-          isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
-          // groups field is intentionally NOT updated here - preserve application groups
-        });
+          logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
+        } catch (createError: any) {
+          // Handle race condition: Another request may have created the user
+          // between our check and create attempt
+          if (createError.message?.includes('User') && createError.message?.includes('already exists') ||
+              createError.message?.includes('email already exists') ||
+              createError.code === 'ConditionalCheckFailedException') {
+            logger.info(`User creation race condition detected for ${jwtPayload.email}, fetching existing user`);
+
+            // Fetch the user that was just created by the other request
+            user = await dynamodbService.getUserByEmail(jwtPayload.email);
+
+            if (!user) {
+              // This shouldn't happen, but if it does, log and rethrow
+              logger.error(`Failed to fetch user after race condition for ${jwtPayload.email}`);
+              throw createError;
+            }
+
+            logger.info(`Retrieved existing user after race condition: ${user.email}`);
+          } else {
+            // If it's a different error, rethrow it
+            throw createError;
+          }
+        }
       }
+
+      // Always update last login and admin status (for both new and existing users)
+      // IMPORTANT: Do NOT overwrite application groups with JWT groups
+      user = await dynamodbService.updateUser(user.id, {
+        lastLoginAt: new Date().toISOString(),
+        isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
+        // groups field is intentionally NOT updated here - preserve application groups
+      });
 
       return user;
     } catch (error) {

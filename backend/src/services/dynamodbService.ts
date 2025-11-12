@@ -63,18 +63,62 @@ class DynamoDBService {
         createdAt: new Date().toISOString(),
       };
 
-      await this.dynamodb.put({
-        TableName: this.tableName,
-        Item: item,
-        ConditionExpression: 'attribute_not_exists(PK)',
-      }).promise();
+      // Create an email lock record to prevent duplicate emails
+      // This acts as a unique constraint on email addresses
+      const emailLockItem = {
+        PK: `EMAIL_LOCK#${user.email}`,
+        SK: `EMAIL_LOCK#${user.email}`,
+        EntityType: 'EMAIL_LOCK',
+        userId: user.id,
+        email: user.email,
+        createdAt: new Date().toISOString(),
+      };
 
-      logger.info(`User created: ${user.id}`);
+      // First, try to create the email lock record
+      // This will fail if another user with the same email already exists
+      try {
+        await this.dynamodb.put({
+          TableName: this.tableName,
+          Item: emailLockItem,
+          ConditionExpression: 'attribute_not_exists(PK)',
+        }).promise();
+      } catch (lockError: any) {
+        if (lockError.code === 'ConditionalCheckFailedException') {
+          throw new DatabaseError('User with this email already exists');
+        }
+        throw lockError;
+      }
+
+      // Now create the actual user record
+      try {
+        await this.dynamodb.put({
+          TableName: this.tableName,
+          Item: item,
+          ConditionExpression: 'attribute_not_exists(PK)',
+        }).promise();
+      } catch (userError: any) {
+        // If user creation fails, clean up the email lock
+        try {
+          await this.dynamodb.delete({
+            TableName: this.tableName,
+            Key: {
+              PK: `EMAIL_LOCK#${user.email}`,
+              SK: `EMAIL_LOCK#${user.email}`,
+            },
+          }).promise();
+        } catch (cleanupError) {
+          logger.error(`Failed to clean up email lock after user creation failure: ${cleanupError}`);
+        }
+
+        if (userError.code === 'ConditionalCheckFailedException') {
+          throw new DatabaseError('User already exists');
+        }
+        throw userError;
+      }
+
+      logger.info(`User created: ${user.id} with email ${user.email}`);
       return item as User;
     } catch (error) {
-      if (error.code === 'ConditionalCheckFailedException') {
-        throw new DatabaseError('User already exists');
-      }
       throw new DatabaseError('Failed to create user', error);
     }
   }
@@ -149,12 +193,33 @@ class DynamoDBService {
 
   async deleteUser(id: string): Promise<void> {
     try {
+      // First get the user to find their email
+      const user = await this.getUser(id);
+      if (!user) {
+        throw new NotFoundError(`User ${id} not found`);
+      }
+
+      // Delete the user record
       await this.dynamodb.delete({
         TableName: this.tableName,
         Key: { PK: `USER#${id}`, SK: `USER#${id}` },
       }).promise();
 
-      logger.info(`User deleted: ${id}`);
+      // Also delete the email lock record
+      try {
+        await this.dynamodb.delete({
+          TableName: this.tableName,
+          Key: {
+            PK: `EMAIL_LOCK#${user.email}`,
+            SK: `EMAIL_LOCK#${user.email}`,
+          },
+        }).promise();
+      } catch (lockError) {
+        logger.warn(`Failed to delete email lock for ${user.email}: ${lockError}`);
+        // Don't fail the whole operation if email lock deletion fails
+      }
+
+      logger.info(`User deleted: ${id} (email: ${user.email})`);
     } catch (error) {
       throw new DatabaseError(`Failed to delete user ${id}`, error);
     }
