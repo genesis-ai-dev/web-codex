@@ -340,15 +340,11 @@ metadata:
   namespace: management-app
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    # Enable WebSocket support
-    nginx.ingress.kubernetes.io/websocket-services: "backend-api"
-    # Set timeouts for WebSocket connections
+    # Enable WebSocket support - NGINX Ingress automatically handles WebSocket upgrades
+    # when the backend service supports it
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    # Enable WebSocket upgrades
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
 spec:
   ingressClassName: nginx
   rules:
