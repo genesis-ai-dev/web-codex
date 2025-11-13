@@ -1020,9 +1020,18 @@ class KubernetesService {
     /**
      * Execute a command in a pod and return streams for stdin/stdout/stderr
      */
-    async execIntoPod(namespace, podName, command) {
+    async execIntoPod(namespace, podName, command, containerName) {
         try {
-            logger_1.logger.info('Starting exec session:', { namespace, podName, command });
+            logger_1.logger.info('Starting exec session:', { namespace, podName, containerName, command });
+            // Get pod to find container name if not specified
+            if (!containerName) {
+                const pod = await this.coreV1Api.readNamespacedPod({ name: podName, namespace });
+                if (!pod.spec?.containers || pod.spec.containers.length === 0) {
+                    throw new Error('Pod has no containers');
+                }
+                containerName = pod.spec.containers[0].name;
+                logger_1.logger.info('Using first container:', { containerName });
+            }
             const exec = new k8s.Exec(this.kc);
             // Create streams for stdin, stdout, stderr
             const { PassThrough } = await Promise.resolve().then(() => __importStar(require('stream')));
@@ -1030,20 +1039,21 @@ class KubernetesService {
             const stdout = new PassThrough();
             const stderr = new PassThrough();
             // Start exec with TTY enabled for interactive shell
-            await exec.exec(namespace, podName, '', // container name (empty string means first container)
-            command, stdout, // K8s expects Writable but PassThrough works for both
+            await exec.exec(namespace, podName, containerName, command, stdout, // K8s expects Writable but PassThrough works for both
             stderr, stdin, true, // tty
             (status) => {
-                logger_1.logger.info('Exec session status:', { namespace, podName, status });
+                logger_1.logger.info('Exec session status:', { namespace, podName, containerName, status });
             });
-            logger_1.logger.info('Exec session established:', { namespace, podName });
+            logger_1.logger.info('Exec session established:', { namespace, podName, containerName });
             return { stdin, stdout, stderr };
         }
         catch (error) {
             logger_1.logger.error('Failed to exec into pod:', {
                 namespace,
                 podName,
+                containerName,
                 error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
             });
             throw new errors_1.KubernetesError(`Failed to exec into pod ${podName}`, error);
         }

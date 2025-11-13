@@ -1054,10 +1054,23 @@ class KubernetesService {
   async execIntoPod(
     namespace: string,
     podName: string,
-    command: string[]
+    command: string[],
+    containerName?: string
   ): Promise<{ stdin: any; stdout: any; stderr: any }> {
     try {
-      logger.info('Starting exec session:', { namespace, podName, command });
+      logger.info('Starting exec session:', { namespace, podName, containerName, command });
+
+      // Get pod to find container name if not specified
+      if (!containerName) {
+        const pod = await this.coreV1Api.readNamespacedPod({ name: podName, namespace });
+
+        if (!pod.spec?.containers || pod.spec.containers.length === 0) {
+          throw new Error('Pod has no containers');
+        }
+
+        containerName = pod.spec.containers[0].name;
+        logger.info('Using first container:', { containerName });
+      }
 
       const exec = new k8s.Exec(this.kc);
 
@@ -1072,25 +1085,27 @@ class KubernetesService {
       await exec.exec(
         namespace,
         podName,
-        '',  // container name (empty string means first container)
+        containerName,
         command,
         stdout as any,  // K8s expects Writable but PassThrough works for both
         stderr as any,
         stdin as any,
         true,  // tty
         (status) => {
-          logger.info('Exec session status:', { namespace, podName, status });
+          logger.info('Exec session status:', { namespace, podName, containerName, status });
         }
       );
 
-      logger.info('Exec session established:', { namespace, podName });
+      logger.info('Exec session established:', { namespace, podName, containerName });
 
       return { stdin, stdout, stderr };
     } catch (error) {
       logger.error('Failed to exec into pod:', {
         namespace,
         podName,
+        containerName,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw new KubernetesError(`Failed to exec into pod ${podName}`, error);
     }
