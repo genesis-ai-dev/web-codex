@@ -36,7 +36,7 @@ class ApiService {
 
   constructor() {
     this.client = axios.create({
-      baseURL: '/api',
+      baseURL: process.env.REACT_APP_API_BASE_URL || '/api',
       timeout: 30000,
     });
 
