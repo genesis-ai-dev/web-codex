@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifyToken = verifyToken;
 exports.authenticate = authenticate;
 exports.requireAdmin = requireAdmin;
 exports.requireGroupMembership = requireGroupMembership;
@@ -91,6 +92,29 @@ async function verifyCognitoToken(token) {
         throw new errors_1.AuthenticationError('Invalid Cognito token');
     }
 }
+/**
+ * Verify JWT token and return user (for use in WebSocket handlers)
+ */
+async function verifyToken(token) {
+    // Determine token type (simplified - in production, you might use different endpoints or headers)
+    let jwtPayload;
+    try {
+        // Try Cognito first
+        jwtPayload = await verifyCognitoToken(token);
+    }
+    catch (cognitoError) {
+        try {
+            // Fallback to Google
+            jwtPayload = await verifyGoogleToken(token);
+        }
+        catch (googleError) {
+            throw new errors_1.AuthenticationError('Invalid token');
+        }
+    }
+    // Get or create user from database
+    const user = await userService_1.userService.getOrCreateUser(jwtPayload);
+    return user;
+}
 async function authenticate(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
@@ -98,23 +122,7 @@ async function authenticate(req, res, next) {
             throw new errors_1.AuthenticationError('Authentication token required');
         }
         const token = authHeader.split(' ')[1];
-        // Determine token type (simplified - in production, you might use different endpoints or headers)
-        let jwtPayload;
-        try {
-            // Try Cognito first
-            jwtPayload = await verifyCognitoToken(token);
-        }
-        catch (cognitoError) {
-            try {
-                // Fallback to Google
-                jwtPayload = await verifyGoogleToken(token);
-            }
-            catch (googleError) {
-                throw new errors_1.AuthenticationError('Invalid token');
-            }
-        }
-        // Get or create user from database
-        const user = await userService_1.userService.getOrCreateUser(jwtPayload);
+        const user = await verifyToken(token);
         req.user = user;
         next();
     }

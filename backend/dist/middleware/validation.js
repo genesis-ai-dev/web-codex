@@ -66,6 +66,9 @@ exports.commonSchemas = {
     id: joi_1.default.object({
         id: joi_1.default.string().required(),
     }),
+    userId: joi_1.default.object({
+        userId: joi_1.default.string().required(),
+    }),
     workspaceId: joi_1.default.object({
         workspaceId: joi_1.default.string().required(),
     }),
@@ -155,6 +158,9 @@ exports.commonSchemas = {
     addGroupMember: joi_1.default.object({
         userId: joi_1.default.string().required(),
         role: joi_1.default.string().valid('viewer', 'developer', 'admin').default('developer'),
+    }),
+    addUserToGroup: joi_1.default.object({
+        groupId: joi_1.default.string().required(),
     }),
     // Query filters
     workspaceQuery: joi_1.default.object({

@@ -299,4 +299,88 @@ router.post('/users/:userId/demote', (0, validation_1.validateParams)(validation
         throw error;
     }
 });
+// Add user to group
+router.post('/users/:userId/groups', (0, validation_1.validateParams)(validation_1.commonSchemas.userId), (0, validation_1.validate)(validation_1.commonSchemas.addUserToGroup), async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { groupId } = req.body;
+        const user = await userService_1.userService.getUserById(userId);
+        if (!user) {
+            throw new errors_1.NotFoundError('User not found');
+        }
+        // Verify group exists
+        const group = await dynamodbService_1.dynamodbService.getGroup(groupId);
+        if (!group) {
+            throw new errors_1.NotFoundError('Group not found');
+        }
+        const updatedUser = await userService_1.userService.addUserToGroup(userId, groupId);
+        // Log admin action
+        await dynamodbService_1.dynamodbService.createAuditLog({
+            userId: req.user.id,
+            username: req.user.username,
+            action: 'add_user_to_group',
+            resource: `user:${userId}`,
+            details: { groupId, groupName: group.name },
+            success: true,
+        });
+        logger_1.logger.info(`User ${userId} added to group ${groupId} by admin ${req.user.id}`);
+        res.json(updatedUser);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to add user to group:', error);
+        throw error;
+    }
+});
+// Remove user from group
+router.delete('/users/:userId/groups/:groupId', (0, validation_1.validateParams)(validation_1.commonSchemas.groupAndUserId), async (req, res) => {
+    try {
+        const { userId, groupId } = req.params;
+        const user = await userService_1.userService.getUserById(userId);
+        if (!user) {
+            throw new errors_1.NotFoundError('User not found');
+        }
+        const updatedUser = await userService_1.userService.removeUserFromGroup(userId, groupId);
+        // Log admin action
+        await dynamodbService_1.dynamodbService.createAuditLog({
+            userId: req.user.id,
+            username: req.user.username,
+            action: 'remove_user_from_group',
+            resource: `user:${userId}`,
+            details: { groupId },
+            success: true,
+        });
+        logger_1.logger.info(`User ${userId} removed from group ${groupId} by admin ${req.user.id}`);
+        res.json(updatedUser);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to remove user from group:', error);
+        throw error;
+    }
+});
+// List all workspaces (across all users)
+router.get('/workspaces', async (req, res) => {
+    try {
+        logger_1.logger.info('Admin listing all workspaces');
+        // Get all users to find all workspaces
+        const { users } = await dynamodbService_1.dynamodbService.listUsers(10000); // Large limit to get all
+        let allWorkspaces = [];
+        for (const user of users) {
+            const userWorkspaces = await dynamodbService_1.dynamodbService.getUserWorkspaces(user.id);
+            // Enrich workspaces with user info
+            const enrichedWorkspaces = userWorkspaces.map(ws => ({
+                ...ws,
+                userName: user.name || user.username,
+                userEmail: user.email,
+            }));
+            allWorkspaces = allWorkspaces.concat(enrichedWorkspaces);
+        }
+        // Sort by creation date (newest first)
+        allWorkspaces.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        res.json(allWorkspaces);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to list all workspaces:', error);
+        throw error;
+    }
+});
 exports.default = router;

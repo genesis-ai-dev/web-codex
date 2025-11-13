@@ -61,7 +61,7 @@ class DynamoDBService {
                 Item: item,
                 ConditionExpression: 'attribute_not_exists(PK)',
             }).promise();
-            logger_1.logger.info(`User created: ${user.id}`);
+            logger_1.logger.info(`User created: ${user.id} with email ${user.email}`);
             return item;
         }
         catch (error) {

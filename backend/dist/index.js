@@ -4,9 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
+const http_1 = __importDefault(require("http"));
 const app_1 = __importDefault(require("./app"));
 const config_1 = require("./config");
 const logger_1 = require("./config/logger");
+const websocket_1 = require("./websocket");
 // Log startup immediately
 logger_1.logger.info('=== Application Starting ===');
 logger_1.logger.info(`Process ID: ${process.pid}`);
@@ -41,11 +43,18 @@ logger_1.logger.info('All required environment variables present');
 logger_1.logger.info('Attempting to start HTTP server...');
 const port = config_1.config.port;
 try {
-    const server = app_1.default.listen(port, () => {
+    // Create HTTP server
+    const server = http_1.default.createServer(app_1.default);
+    // Setup WebSocket server
+    (0, websocket_1.setupWebSocketServer)(server);
+    logger_1.logger.info('WebSocket server configured');
+    // Start listening
+    server.listen(port, () => {
         logger_1.logger.info('=== Server Started Successfully ===');
         logger_1.logger.info(`VSCode Platform API server running on port ${port}`);
         logger_1.logger.info(`Environment: ${config_1.config.nodeEnv}`);
         logger_1.logger.info(`Health check available at: http://localhost:${port}/api/health/live`);
+        logger_1.logger.info(`WebSocket endpoint available at: ws://localhost:${port}/api/admin/workspaces/:workspaceId/exec`);
     });
     server.on('error', (error) => {
         logger_1.logger.error('Server failed to start:', {

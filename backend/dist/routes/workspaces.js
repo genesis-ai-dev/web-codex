@@ -56,7 +56,7 @@ router.get('/', (0, validation_1.validateQuery)(validation_1.commonSchemas.works
         const startIndex = offset || 0;
         const endIndex = startIndex + (limit || 20);
         const paginatedWorkspaces = workspaces.slice(startIndex, endIndex);
-        // Update workspace statuses from Kubernetes
+        // Update workspace statuses and metrics from Kubernetes
         const updatedWorkspaces = await Promise.all(paginatedWorkspaces.map(async (workspace) => {
             try {
                 const namespace = await getWorkspaceNamespace(workspace);
@@ -66,12 +66,27 @@ router.get('/', (0, validation_1.validateQuery)(validation_1.commonSchemas.works
                 }
                 const k8sName = `workspace-${workspace.id.substring(3)}`.toLowerCase();
                 const k8sStatus = await kubernetesService_1.kubernetesService.getDeploymentStatus(namespace, k8sName);
+                // Fetch metrics for running workspaces
+                let metrics = undefined;
+                if (k8sStatus === 'running') {
+                    try {
+                        metrics = await kubernetesService_1.kubernetesService.getNamespaceMetrics(namespace);
+                    }
+                    catch (metricsError) {
+                        logger_1.logger.warn(`Failed to get metrics for workspace ${workspace.id}:`, metricsError);
+                        // Continue without metrics rather than failing the whole request
+                    }
+                }
                 if (k8sStatus !== workspace.status) {
-                    // Update status in database
-                    const updatedWorkspace = await dynamodbService_1.dynamodbService.updateWorkspace(workspace.id, { status: k8sStatus });
+                    // Update status and metrics in database
+                    const updatedWorkspace = await dynamodbService_1.dynamodbService.updateWorkspace(workspace.id, {
+                        status: k8sStatus,
+                        ...(metrics && { usage: metrics })
+                    });
                     return updatedWorkspace;
                 }
-                return workspace;
+                // Return workspace with fresh metrics even if status hasn't changed
+                return { ...workspace, ...(metrics && { usage: metrics }) };
             }
             catch (error) {
                 logger_1.logger.warn(`Failed to get K8s status for workspace ${workspace.id}:`, error);
@@ -103,6 +118,8 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
         const workspaceId = `ws_${(0, uuid_1.v4)().replace(/-/g, '')}`;
         const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
         const namespace = group.namespace;
+        // Generate unique connection token for VSCode authentication
+        const connectionToken = (0, uuid_1.v4)();
         // Default resources if not provided
         const resources = createRequest.resources || {
             cpu: '2',
@@ -118,7 +135,8 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
             groupName: group.displayName,
             userId: user.id,
             status: types_1.WorkspaceStatus.PENDING,
-            url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/`,
+            url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/?tkn=${connectionToken}`,
+            connectionToken,
             resources,
             image: createRequest.image || 'ghcr.io/genesis-ai-dev/codex:master',
             replicas: 0, // Start stopped
@@ -127,7 +145,7 @@ router.post('/', rateLimiting_1.operationRateLimits.createWorkspace, (0, validat
         try {
             // TODO: Re-enable PVC creation once storage is configured
             // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
-            await kubernetesService_1.kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
+            await kubernetesService_1.kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources, connectionToken);
             await kubernetesService_1.kubernetesService.createService(namespace, k8sName);
             // Create or update Ingress rule for this workspace
             const ingressName = `${namespace}-ingress`;

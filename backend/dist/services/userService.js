@@ -10,29 +10,35 @@ class UserService {
             // Determine admin status from JWT groups (Cognito groups like "platform-admins")
             // These are OAuth provider groups, NOT application groups
             const isAdmin = (jwtPayload.groups || []).includes('platform-admins');
-            // Try to find existing user by email
+            // IMPORTANT: Always check by email first before creating
+            // This is the ONLY place where we check, to avoid race conditions
             let user = await dynamodbService_1.dynamodbService.getUserByEmail(jwtPayload.email);
             if (!user) {
-                // Create new user with empty application groups array
-                // Application groups (grp_*) must be assigned via addUserToGroup, not from JWT
-                user = await dynamodbService_1.dynamodbService.createUser({
-                    id: `usr_${(0, uuid_1.v4)().replace(/-/g, '')}`,
-                    username: jwtPayload.username || jwtPayload.email.split('@')[0],
-                    email: jwtPayload.email,
-                    groups: [], // Start with no application groups
-                    isAdmin: isAdmin, // Set from OAuth/Cognito groups
-                });
-                logger_1.logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
+                // Double-check by email one more time RIGHT before creating
+                // to minimize race condition window
+                user = await dynamodbService_1.dynamodbService.getUserByEmail(jwtPayload.email);
+                if (!user) {
+                    // Create new user - only if still doesn't exist
+                    user = await dynamodbService_1.dynamodbService.createUser({
+                        id: `usr_${(0, uuid_1.v4)().replace(/-/g, '')}`,
+                        username: jwtPayload.username || jwtPayload.email.split('@')[0],
+                        email: jwtPayload.email,
+                        groups: [], // Start with no application groups
+                        isAdmin: isAdmin, // Set from OAuth/Cognito groups
+                    });
+                    logger_1.logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
+                }
+                else {
+                    logger_1.logger.info(`User appeared between checks (race condition handled): ${user.email}`);
+                }
             }
-            else {
-                // Update user's last login and admin status from JWT
-                // IMPORTANT: Do NOT overwrite application groups with JWT groups
-                user = await dynamodbService_1.dynamodbService.updateUser(user.id, {
-                    lastLoginAt: new Date().toISOString(),
-                    isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
-                    // groups field is intentionally NOT updated here - preserve application groups
-                });
-            }
+            // Always update last login and admin status (for both new and existing users)
+            // IMPORTANT: Do NOT overwrite application groups with JWT groups
+            user = await dynamodbService_1.dynamodbService.updateUser(user.id, {
+                lastLoginAt: new Date().toISOString(),
+                isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
+                // groups field is intentionally NOT updated here - preserve application groups
+            });
             return user;
         }
         catch (error) {

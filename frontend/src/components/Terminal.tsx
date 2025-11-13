@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TerminalProps {
   workspaceId: string;
@@ -12,6 +13,7 @@ interface TerminalProps {
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
 
 export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
+  const { getAccessToken } = useAuth();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -64,8 +66,8 @@ export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Connect to WebSocket
-    const token = localStorage.getItem('token');
+    // Connect to WebSocket - get token from AuthContext
+    const token = getAccessToken();
     if (!token) {
       setConnectionStatus('error');
       setError('No authentication token found');
@@ -132,7 +134,7 @@ export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
       term.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId]);
+  }, [workspaceId, getAccessToken]);
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>

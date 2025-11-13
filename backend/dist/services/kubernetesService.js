@@ -246,7 +246,7 @@ class KubernetesService {
         }
     }
     // Deployment operations
-    async createDeployment(namespace, name, image, resources, labels = {}) {
+    async createDeployment(namespace, name, image, resources, connectionToken, labels = {}) {
         try {
             const deployment = {
                 metadata: {
@@ -289,8 +289,8 @@ class KubernetesService {
                                     args: [
                                         '--host=0.0.0.0',
                                         '--port=8000',
-                                        '--connection-token=12345', // TODO: Generate secure token
-                                        `--server-base-path=/${namespace}`,
+                                        `--connection-token=${connectionToken}`,
+                                        `--server-base-path=/${namespace}/${name}`,
                                     ],
                                     ports: [{
                                             containerPort: 8000,
@@ -998,6 +998,10 @@ class KubernetesService {
         return `${minutes}m`;
     }
     parseCPU(cpu) {
+        // Handle nanocores (n), millicores (m), or cores (plain number)
+        if (cpu.endsWith('n')) {
+            return parseFloat(cpu.slice(0, -1)) / 1000000000;
+        }
         if (cpu.endsWith('m')) {
             return parseFloat(cpu.slice(0, -1)) / 1000;
         }
@@ -1011,6 +1015,37 @@ class KubernetesService {
             }
         }
         return parseFloat(memory);
+    }
+    /**
+     * Execute a command in a pod and return streams for stdin/stdout/stderr
+     */
+    async execIntoPod(namespace, podName, command) {
+        try {
+            logger_1.logger.info('Starting exec session:', { namespace, podName, command });
+            const exec = new k8s.Exec(this.kc);
+            // Create streams for stdin, stdout, stderr
+            const { PassThrough } = await Promise.resolve().then(() => __importStar(require('stream')));
+            const stdin = new PassThrough();
+            const stdout = new PassThrough();
+            const stderr = new PassThrough();
+            // Start exec with TTY enabled for interactive shell
+            await exec.exec(namespace, podName, '', // container name (empty string means first container)
+            command, stdout, // K8s expects Writable but PassThrough works for both
+            stderr, stdin, true, // tty
+            (status) => {
+                logger_1.logger.info('Exec session status:', { namespace, podName, status });
+            });
+            logger_1.logger.info('Exec session established:', { namespace, podName });
+            return { stdin, stdout, stderr };
+        }
+        catch (error) {
+            logger_1.logger.error('Failed to exec into pod:', {
+                namespace,
+                podName,
+                error: error instanceof Error ? error.message : String(error),
+            });
+            throw new errors_1.KubernetesError(`Failed to exec into pod ${podName}`, error);
+        }
     }
     formatMemory(bytes) {
         const units = [
