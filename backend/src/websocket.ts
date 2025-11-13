@@ -161,11 +161,12 @@ async function handleExecConnection(
       success: true,
     });
 
-    // Start exec session
+    // Start exec session with proper TTY settings
+    // The 'onlcr' flag ensures LF is converted to CRLF for output
     execStream = await kubernetesService.execIntoPod(
       namespace,
       podName,
-      ['/bin/bash', '-c', 'if command -v bash > /dev/null; then exec bash; else exec sh; fi']
+      ['/bin/bash', '-c', 'stty onlcr; if command -v bash > /dev/null; then exec bash; else exec sh; fi']
     );
 
     // Forward data from browser to pod

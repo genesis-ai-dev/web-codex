@@ -127,6 +127,7 @@ export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
     // Send terminal input to WebSocket
     const disposable = term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
+        // The terminal already handles Enter key properly by sending \r
         ws.send(data);
       }
     });

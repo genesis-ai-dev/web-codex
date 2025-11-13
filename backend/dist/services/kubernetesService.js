@@ -1021,42 +1021,87 @@ class KubernetesService {
      * Execute a command in a pod and return streams for stdin/stdout/stderr
      */
     async execIntoPod(namespace, podName, command, containerName) {
-        try {
-            logger_1.logger.info('Starting exec session:', { namespace, podName, containerName, command });
-            // Get pod to find container name if not specified
-            if (!containerName) {
-                const pod = await this.coreV1Api.readNamespacedPod({ name: podName, namespace });
-                if (!pod.spec?.containers || pod.spec.containers.length === 0) {
-                    throw new Error('Pod has no containers');
+        return new Promise(async (resolve, reject) => {
+            try {
+                logger_1.logger.info('Starting exec session:', { namespace, podName, containerName, command });
+                // Get pod to find container name if not specified
+                if (!containerName) {
+                    const pod = await this.coreV1Api.readNamespacedPod({ name: podName, namespace });
+                    if (!pod.spec?.containers || pod.spec.containers.length === 0) {
+                        throw new Error('Pod has no containers');
+                    }
+                    containerName = pod.spec.containers[0].name;
+                    logger_1.logger.info('Using first container:', { containerName });
                 }
-                containerName = pod.spec.containers[0].name;
-                logger_1.logger.info('Using first container:', { containerName });
+                const exec = new k8s.Exec(this.kc);
+                // Create streams for stdin, stdout, stderr
+                const { PassThrough } = await Promise.resolve().then(() => __importStar(require('stream')));
+                const stdin = new PassThrough();
+                const stdout = new PassThrough();
+                const stderr = new PassThrough();
+                // Track if we've resolved/rejected
+                let settled = false;
+                // Start exec with TTY enabled for interactive shell
+                // Note: exec.exec returns a WebSocket connection object
+                const ws = await exec.exec(namespace, podName, containerName, command, stdout, // K8s expects Writable but PassThrough works for both
+                stderr, stdin, true, // tty
+                (status) => {
+                    logger_1.logger.info('Exec session status:', { namespace, podName, containerName, status });
+                    if (status.status === 'Failure' && !settled) {
+                        settled = true;
+                        reject(new Error(`Exec failed: ${status.message || 'Unknown error'}`));
+                    }
+                });
+                // Handle WebSocket open event - this means the connection is established
+                if (ws && typeof ws.on === 'function') {
+                    ws.on('open', () => {
+                        if (!settled) {
+                            settled = true;
+                            logger_1.logger.info('Exec session established:', { namespace, podName, containerName });
+                            resolve({ stdin, stdout, stderr, on: ws.on?.bind(ws) });
+                        }
+                    });
+                    ws.on('error', (error) => {
+                        if (!settled) {
+                            settled = true;
+                            logger_1.logger.error('Exec WebSocket error:', {
+                                namespace,
+                                podName,
+                                containerName,
+                                error: error.message,
+                            });
+                            reject(error);
+                        }
+                    });
+                    // If no open event fires within 5 seconds, assume success (already connected)
+                    setTimeout(() => {
+                        if (!settled) {
+                            settled = true;
+                            logger_1.logger.info('Exec session established (timeout fallback):', { namespace, podName, containerName });
+                            resolve({ stdin, stdout, stderr, on: ws.on?.bind(ws) });
+                        }
+                    }, 5000);
+                }
+                else {
+                    // No WebSocket returned, assume immediate success
+                    logger_1.logger.info('Exec session established (immediate):', { namespace, podName, containerName });
+                    resolve({ stdin, stdout, stderr });
+                }
             }
-            const exec = new k8s.Exec(this.kc);
-            // Create streams for stdin, stdout, stderr
-            const { PassThrough } = await Promise.resolve().then(() => __importStar(require('stream')));
-            const stdin = new PassThrough();
-            const stdout = new PassThrough();
-            const stderr = new PassThrough();
-            // Start exec with TTY enabled for interactive shell
-            await exec.exec(namespace, podName, containerName, command, stdout, // K8s expects Writable but PassThrough works for both
-            stderr, stdin, true, // tty
-            (status) => {
-                logger_1.logger.info('Exec session status:', { namespace, podName, containerName, status });
-            });
-            logger_1.logger.info('Exec session established:', { namespace, podName, containerName });
-            return { stdin, stdout, stderr };
-        }
-        catch (error) {
-            logger_1.logger.error('Failed to exec into pod:', {
-                namespace,
-                podName,
-                containerName,
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined,
-            });
-            throw new errors_1.KubernetesError(`Failed to exec into pod ${podName}`, error);
-        }
+            catch (error) {
+                logger_1.logger.error('Failed to exec into pod:', {
+                    namespace,
+                    podName,
+                    containerName,
+                    error: error instanceof Error ? error.message : JSON.stringify(error),
+                    errorType: error?.constructor?.name,
+                    errorCode: error?.code,
+                    statusCode: error?.statusCode || error?.response?.statusCode,
+                    stack: error instanceof Error ? error.stack : undefined,
+                });
+                reject(new errors_1.KubernetesError(`Failed to exec into pod ${podName}`, error));
+            }
+        });
     }
     formatMemory(bytes) {
         const units = [
