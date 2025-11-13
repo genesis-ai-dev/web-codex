@@ -291,6 +291,7 @@ class KubernetesService {
                                         '--port=8000',
                                         `--connection-token=${connectionToken}`,
                                         `--server-base-path=/${namespace}/${name}`,
+                                        '--extensions-dir=/home/codex/.codex-server/extensions',
                                     ],
                                     ports: [{
                                             containerPort: 8000,

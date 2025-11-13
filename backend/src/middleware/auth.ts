@@ -8,9 +8,16 @@ import { AuthenticatedRequest, User, JwtPayload } from '../types';
 import { userService } from '../services/userService';
 
 // Initialize Cognito JWT verifier for ID tokens
-const cognitoVerifier = config.cognitoUserPoolId ? CognitoJwtVerifier.create({
+const cognitoIdTokenVerifier = config.cognitoUserPoolId ? CognitoJwtVerifier.create({
   userPoolId: config.cognitoUserPoolId,
   tokenUse: 'id',
+  clientId: config.cognitoClientId,
+}) : null;
+
+// Initialize Cognito JWT verifier for access tokens
+const cognitoAccessTokenVerifier = config.cognitoUserPoolId ? CognitoJwtVerifier.create({
+  userPoolId: config.cognitoUserPoolId,
+  tokenUse: 'access',
   clientId: config.cognitoClientId,
 }) : null;
 
@@ -38,15 +45,16 @@ async function verifyGoogleToken(token: string): Promise<JwtPayload> {
   }
 }
 
-// Cognito JWT verification
+// Cognito JWT verification - accepts both ID and access tokens
 async function verifyCognitoToken(token: string): Promise<JwtPayload> {
-  if (!cognitoVerifier) {
+  if (!cognitoIdTokenVerifier || !cognitoAccessTokenVerifier) {
     throw new AuthenticationError('Cognito not configured');
   }
 
   try {
-    const payload = await cognitoVerifier.verify(token);
-    
+    // Try to verify as ID token first
+    const payload = await cognitoIdTokenVerifier.verify(token);
+
     return {
       sub: payload.sub,
       username: payload['cognito:username'] as string,
@@ -55,9 +63,27 @@ async function verifyCognitoToken(token: string): Promise<JwtPayload> {
       iat: payload.iat,
       exp: payload.exp,
     };
-  } catch (error) {
-    logger.error('Cognito token verification failed:', error);
-    throw new AuthenticationError('Invalid Cognito token');
+  } catch (idTokenError) {
+    // If ID token verification fails, try access token
+    try {
+      const payload = await cognitoAccessTokenVerifier.verify(token);
+
+      // Access tokens don't contain email or username, so we need to get user from sub
+      // We'll return minimal info and let the calling code handle fetching full user details
+      return {
+        sub: payload.sub,
+        username: payload.username as string,
+        groups: payload['cognito:groups'] as string[] || [],
+        iat: payload.iat,
+        exp: payload.exp,
+      };
+    } catch (accessTokenError) {
+      logger.error('Cognito token verification failed for both ID and access tokens:', {
+        idTokenError: idTokenError instanceof Error ? idTokenError.message : idTokenError,
+        accessTokenError: accessTokenError instanceof Error ? accessTokenError.message : accessTokenError,
+      });
+      throw new AuthenticationError('Invalid Cognito token');
+    }
   }
 }
 

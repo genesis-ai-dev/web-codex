@@ -46,9 +46,15 @@ const logger_1 = require("../config/logger");
 const errors_1 = require("../utils/errors");
 const userService_1 = require("../services/userService");
 // Initialize Cognito JWT verifier for ID tokens
-const cognitoVerifier = config_1.config.cognitoUserPoolId ? aws_jwt_verify_1.CognitoJwtVerifier.create({
+const cognitoIdTokenVerifier = config_1.config.cognitoUserPoolId ? aws_jwt_verify_1.CognitoJwtVerifier.create({
     userPoolId: config_1.config.cognitoUserPoolId,
     tokenUse: 'id',
+    clientId: config_1.config.cognitoClientId,
+}) : null;
+// Initialize Cognito JWT verifier for access tokens
+const cognitoAccessTokenVerifier = config_1.config.cognitoUserPoolId ? aws_jwt_verify_1.CognitoJwtVerifier.create({
+    userPoolId: config_1.config.cognitoUserPoolId,
+    tokenUse: 'access',
     clientId: config_1.config.cognitoClientId,
 }) : null;
 // Google JWT verification
@@ -71,13 +77,14 @@ async function verifyGoogleToken(token) {
         throw new errors_1.AuthenticationError('Invalid Google token');
     }
 }
-// Cognito JWT verification
+// Cognito JWT verification - accepts both ID and access tokens
 async function verifyCognitoToken(token) {
-    if (!cognitoVerifier) {
+    if (!cognitoIdTokenVerifier || !cognitoAccessTokenVerifier) {
         throw new errors_1.AuthenticationError('Cognito not configured');
     }
     try {
-        const payload = await cognitoVerifier.verify(token);
+        // Try to verify as ID token first
+        const payload = await cognitoIdTokenVerifier.verify(token);
         return {
             sub: payload.sub,
             username: payload['cognito:username'],
@@ -87,9 +94,27 @@ async function verifyCognitoToken(token) {
             exp: payload.exp,
         };
     }
-    catch (error) {
-        logger_1.logger.error('Cognito token verification failed:', error);
-        throw new errors_1.AuthenticationError('Invalid Cognito token');
+    catch (idTokenError) {
+        // If ID token verification fails, try access token
+        try {
+            const payload = await cognitoAccessTokenVerifier.verify(token);
+            // Access tokens don't contain email or username, so we need to get user from sub
+            // We'll return minimal info and let the calling code handle fetching full user details
+            return {
+                sub: payload.sub,
+                username: payload.username,
+                groups: payload['cognito:groups'] || [],
+                iat: payload.iat,
+                exp: payload.exp,
+            };
+        }
+        catch (accessTokenError) {
+            logger_1.logger.error('Cognito token verification failed for both ID and access tokens:', {
+                idTokenError: idTokenError instanceof Error ? idTokenError.message : idTokenError,
+                accessTokenError: accessTokenError instanceof Error ? accessTokenError.message : accessTokenError,
+            });
+            throw new errors_1.AuthenticationError('Invalid Cognito token');
+        }
     }
 }
 /**

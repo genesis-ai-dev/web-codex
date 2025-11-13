@@ -19,7 +19,7 @@ export interface AuthenticatedRequest extends Request {
 export interface JwtPayload {
   sub: string;
   username?: string;
-  email: string;
+  email?: string; // Optional because access tokens don't contain email
   groups?: string[];
   iat: number;
   exp: number;
