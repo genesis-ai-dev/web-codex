@@ -1104,7 +1104,10 @@ class KubernetesService {
         namespace,
         podName,
         containerName,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : JSON.stringify(error),
+        errorType: error?.constructor?.name,
+        errorCode: (error as any)?.code,
+        statusCode: (error as any)?.statusCode || (error as any)?.response?.statusCode,
         stack: error instanceof Error ? error.stack : undefined,
       });
       throw new KubernetesError(`Failed to exec into pod ${podName}`, error);
