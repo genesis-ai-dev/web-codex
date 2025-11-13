@@ -91,10 +91,24 @@ export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
       term.writeln('\r\n\x1b[1;32mConnected!\x1b[0m\r\n');
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
+      let data: string;
+
       if (typeof event.data === 'string') {
-        term.write(event.data);
+        data = event.data;
+      } else if (event.data instanceof Blob) {
+        // Convert Blob to text
+        data = await event.data.text();
+      } else if (event.data instanceof ArrayBuffer) {
+        // Convert ArrayBuffer to text
+        const decoder = new TextDecoder('utf-8');
+        data = decoder.decode(event.data);
+      } else {
+        console.warn('Unknown WebSocket data type:', typeof event.data);
+        return;
       }
+
+      term.write(data);
     };
 
     ws.onerror = (event) => {
