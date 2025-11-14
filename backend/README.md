@@ -2,6 +2,7 @@
 
 A production-ready backend API for a multi-tenant Kubernetes VSCode platform, providing secure workspace management, group-based access control, and integration with AWS services.
 
+
 ## Features
 
 - 🔐 **Multi-provider Authentication**: AWS Cognito and Google OAuth support
