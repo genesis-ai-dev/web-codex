@@ -1056,7 +1056,7 @@ class KubernetesService {
     podName: string,
     command: string[],
     containerName?: string
-  ): Promise<{ stdin: any; stdout: any; stderr: any; on?: any }> {
+  ): Promise<{ stdin: any; stdout: any; stderr: any; on?: any; ws?: any }> {
     return new Promise(async (resolve, reject) => {
       try {
         logger.info('Starting exec session:', { namespace, podName, containerName, command });
@@ -1111,7 +1111,7 @@ class KubernetesService {
             if (!settled) {
               settled = true;
               logger.info('Exec session established:', { namespace, podName, containerName });
-              resolve({ stdin, stdout, stderr, on: ws.on?.bind(ws) });
+              resolve({ stdin, stdout, stderr, on: ws.on?.bind(ws), ws });
             }
           });
 
@@ -1133,7 +1133,7 @@ class KubernetesService {
             if (!settled) {
               settled = true;
               logger.info('Exec session established (timeout fallback):', { namespace, podName, containerName });
-              resolve({ stdin, stdout, stderr, on: ws.on?.bind(ws) });
+              resolve({ stdin, stdout, stderr, on: ws.on?.bind(ws), ws });
             }
           }, 5000);
         } else {

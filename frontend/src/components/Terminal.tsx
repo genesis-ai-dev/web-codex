@@ -89,6 +89,10 @@ export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
     ws.onopen = () => {
       setConnectionStatus('connected');
       term.writeln('\r\n\x1b[1;32mConnected!\x1b[0m\r\n');
+
+      // Send initial terminal size
+      const { cols, rows } = term;
+      ws.send(JSON.stringify({ type: 'resize', cols, rows }));
     };
 
     ws.onmessage = async (event) => {
@@ -135,6 +139,11 @@ export const Terminal: React.FC<TerminalProps> = ({ workspaceId, onClose }) => {
     // Handle window resize
     const handleResize = () => {
       fitAddon.fit();
+      // Send new terminal size to backend
+      if (ws.readyState === WebSocket.OPEN) {
+        const { cols, rows } = term;
+        ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+      }
     };
 
     window.addEventListener('resize', handleResize);

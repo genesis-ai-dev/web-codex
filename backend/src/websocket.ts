@@ -174,6 +174,22 @@ async function handleExecConnection(
 
     // Forward data from browser to pod
     ws.on('message', (data: Buffer) => {
+      // Check if it's a resize message (JSON format)
+      try {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'resize' && message.cols && message.rows) {
+          // Resize the terminal using the K8s WebSocket resize method
+          if (execStream && execStream.ws && typeof execStream.ws.resize === 'function') {
+            logger.info('Resizing terminal:', { cols: message.cols, rows: message.rows });
+            execStream.ws.resize({ height: message.rows, width: message.cols });
+          }
+          return;
+        }
+      } catch (e) {
+        // Not JSON, treat as regular terminal input
+      }
+
+      // Forward regular input to pod
       if (execStream && execStream.stdin) {
         execStream.stdin.write(data);
       }
