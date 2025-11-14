@@ -162,11 +162,15 @@ async function handleExecConnection(
     });
 
     // Start exec session with proper TTY settings
-    // The 'onlcr' flag ensures LF is converted to CRLF for output
+    // Configure TTY for web terminal:
+    // - icrnl: map CR to NL on input (so Enter key works)
+    // - onlcr: map NL to CRNL on output (proper line endings)
+    // - echo: enable echo
+    // - icanon: enable canonical mode
     execStream = await kubernetesService.execIntoPod(
       namespace,
       podName,
-      ['/bin/bash', '-c', 'stty onlcr; if command -v bash > /dev/null; then exec bash; else exec sh; fi']
+      ['/bin/bash', '-c', 'stty icrnl onlcr echo icanon; export TERM=xterm-256color; if command -v bash > /dev/null; then exec bash; else exec sh; fi']
     );
 
     // Forward data from browser to pod
