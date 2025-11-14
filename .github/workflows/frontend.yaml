@@ -144,7 +144,7 @@ jobs:
           REACT_APP_AUTH_AUTHORITY=${{ secrets.COGNITO_AUTHORITY }}
           REACT_APP_AUTH_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID }}
           REACT_APP_COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN }}
-          REACT_APP_API_BASE_URL=https://loadbalancer.frontierrnd.com/api
+          REACT_APP_API_BASE_URL=/api
 
   deploy:
     runs-on: ubuntu-latest

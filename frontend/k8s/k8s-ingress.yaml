@@ -19,3 +19,31 @@ spec:
             name: frontend-service
             port:
               number: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: frontend
+  namespace: management-app
+spec:
+  parentRefs:
+  - name: main-nginx-gateway
+    namespace: gateway-system
+    sectionName: http
+  - name: main-nginx-gateway
+    namespace: gateway-system
+    sectionName: https-aws
+  - name: main-nginx-gateway
+    namespace: gateway-system
+    sectionName: https
+  hostnames:
+  - "test.denhertog.ca"
+  - "loadbalancer.frontierrnd.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: frontend-service
+      port: 80
