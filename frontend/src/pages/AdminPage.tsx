@@ -119,14 +119,14 @@ export const AdminPage: React.FC = () => {
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Page header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Administration</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             Manage users, groups, and system settings for your platform.
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
           <nav className="-mb-px flex space-x-8">
             {tabs.map((tab) => (
               <button
@@ -135,13 +135,13 @@ export const AdminPage: React.FC = () => {
                 className={cn(
                   'group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors',
                   activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 )}
               >
                 <span className={cn(
                   'mr-2',
-                  activeTab === tab.id ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+                  activeTab === tab.id ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400'
                 )}>
                   {tab.icon}
                 </span>
@@ -198,7 +198,7 @@ const WorkspacesTabContent: React.FC = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading workspaces...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading workspaces...</p>
         </div>
       </div>
     );
@@ -213,8 +213,8 @@ const WorkspacesTabContent: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Error</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <button
             onClick={loadWorkspaces}
             className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -229,8 +229,8 @@ const WorkspacesTabContent: React.FC = () => {
   return (
     <>
       <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900">All Workspaces</h2>
-        <p className="text-sm text-gray-600 mt-1">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Workspaces</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           View and manage all workspaces across all users ({workspaces.length} total)
         </p>
       </div>
@@ -243,20 +243,20 @@ const WorkspacesTabContent: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Workspaces</h3>
-            <p className="text-gray-600">No workspaces have been created yet.</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Workspaces</h3>
+            <p className="text-gray-600 dark:text-gray-400">No workspaces have been created yet.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
+        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {workspaces.map((workspace) => (
               <li key={workspace.id}>
-                <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center">
-                        <h3 className="text-sm font-medium text-primary-600 truncate">
+                        <h3 className="text-sm font-medium text-primary-600 dark:text-primary-400 truncate">
                           {workspace.name}
                         </h3>
                         <span className={`ml-3 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -269,9 +269,9 @@ const WorkspacesTabContent: React.FC = () => {
                         </span>
                       </div>
                       {workspace.description && (
-                        <p className="mt-1 text-sm text-gray-600">{workspace.description}</p>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{workspace.description}</p>
                       )}
-                      <div className="mt-2 flex items-center text-sm text-gray-500">
+                      <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <svg className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
@@ -287,7 +287,7 @@ const WorkspacesTabContent: React.FC = () => {
                       {workspace.status === 'running' && (
                         <button
                           onClick={() => setTerminalWorkspace(workspace)}
-                          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                          className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -333,13 +333,13 @@ const AuditLogsPlaceholder: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
           Audit Logs
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Track all administrative actions, user activity, workspace operations, and security events across the platform.
         </p>
-        <div className="text-sm text-gray-500 space-y-2">
+        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
           <p className="font-medium">Planned features:</p>
           <ul className="text-left max-w-md mx-auto space-y-1">
             <li>• User authentication and authorization events</li>
@@ -365,13 +365,13 @@ const SettingsPlaceholder: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
           System Settings
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Configure platform-wide settings, default resource limits, and authentication providers.
         </p>
-        <div className="text-sm text-gray-500 space-y-2">
+        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
           <p className="font-medium">Planned features:</p>
           <ul className="text-left max-w-md mx-auto space-y-1">
             <li>• Default resource quotas for new groups</li>
@@ -397,13 +397,13 @@ const MonitoringPlaceholder: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
           System Monitoring
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Monitor platform health, resource usage, and performance metrics across all workspaces and namespaces.
         </p>
-        <div className="text-sm text-gray-500 space-y-2">
+        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
           <p className="font-medium">Planned features:</p>
           <ul className="text-left max-w-md mx-auto space-y-1">
             <li>• Real-time resource usage dashboards</li>

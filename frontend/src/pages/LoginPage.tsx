@@ -35,7 +35,7 @@ export const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -44,10 +44,10 @@ export const LoginPage: React.FC = () => {
               <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8z" clipRule="evenodd" />
             </svg>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-gray-100">
             Codex Web
           </h2>
-          <p className="mt-2 text-sm text-gray-600 max-w-sm mx-auto text-balance">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto text-balance">
             Sign in to access your development workspaces and collaborate with your team.
           </p>
         </div>
@@ -56,10 +56,10 @@ export const LoginPage: React.FC = () => {
         <Card className="mt-8">
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900 text-center">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 text-center">
                 Sign in to your account
               </h3>
-              <p className="mt-2 text-sm text-gray-600 text-center">
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">
                 Choose your authentication method below
               </p>
             </div>
@@ -120,13 +120,13 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 By signing in, you agree to our{' '}
-                <a href="/terms" className="font-medium text-primary-600 hover:text-primary-500">
+                <a href="/terms" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500">
                   Terms of Service
                 </a>{' '}
                 and{' '}
-                <a href="/privacy" className="font-medium text-primary-600 hover:text-primary-500">
+                <a href="/privacy" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500">
                   Privacy Policy
                 </a>
               </p>
@@ -138,13 +138,13 @@ export const LoginPage: React.FC = () => {
         <div className="mt-8">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-gray-300 dark:border-gray-700" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">Platform Features</span>
+              <span className="px-2 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400">Platform Features</span>
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-gray-600">
+          <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-center">
               <svg className="h-4 w-4 text-success-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
