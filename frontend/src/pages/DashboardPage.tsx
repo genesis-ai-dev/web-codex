@@ -46,7 +46,7 @@ export const DashboardPage: React.FC = () => {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading dashboard...</p>
+            <p className="text-gray-500 dark:text-gray-400">Loading dashboard...</p>
           </div>
         </div>
       </Layout>
@@ -64,10 +64,10 @@ export const DashboardPage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Failed to load dashboard
               </h3>
-              <p className="text-gray-600 mb-4">{error}</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
               <Button onClick={loadDashboardData}>
                 Try again
               </Button>
@@ -83,8 +83,8 @@ export const DashboardPage: React.FC = () => {
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Page header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             Welcome back! Here's an overview of your development workspaces and platform activity.
           </p>
         </div>
@@ -152,12 +152,12 @@ export const DashboardPage: React.FC = () => {
                       showValue
                       className="mb-2"
                     />
-                    <div className="text-sm font-medium text-gray-700">CPU</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">CPU</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {stats.resourceUsage.cpu.used} / {stats.resourceUsage.cpu.total}
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
                     <CircularProgress
                       value={stats.resourceUsage.memory.percentage}
@@ -165,12 +165,12 @@ export const DashboardPage: React.FC = () => {
                       showValue
                       className="mb-2"
                     />
-                    <div className="text-sm font-medium text-gray-700">Memory</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Memory</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {stats.resourceUsage.memory.used} / {stats.resourceUsage.memory.total}
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
                     <CircularProgress
                       value={stats.resourceUsage.storage.percentage}
@@ -178,12 +178,12 @@ export const DashboardPage: React.FC = () => {
                       showValue
                       className="mb-2"
                     />
-                    <div className="text-sm font-medium text-gray-700">Storage</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Storage</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {stats.resourceUsage.storage.used} / {stats.resourceUsage.storage.total}
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
                     <CircularProgress
                       value={stats.resourceUsage.pods.percentage}
@@ -191,14 +191,14 @@ export const DashboardPage: React.FC = () => {
                       showValue
                       className="mb-2"
                     />
-                    <div className="text-sm font-medium text-gray-700">Pods</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Pods</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {stats.resourceUsage.pods.used} / {stats.resourceUsage.pods.total}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No resource data available
                 </div>
               )}
@@ -226,13 +226,13 @@ export const DashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">No workspaces yet</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">No workspaces yet</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     Get started by creating your first workspace
                   </p>
                   <Link to="/workspaces">
@@ -266,8 +266,8 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color }) => (
         </div>
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
       </div>
     </CardContent>
   </Card>
@@ -280,19 +280,19 @@ interface WorkspaceItemProps {
 const WorkspaceItem: React.FC<WorkspaceItemProps> = ({ workspace }) => (
   <div className="flex items-center justify-between">
     <div className="flex items-center space-x-3">
-      <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
-        <svg className="w-5 h-5 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+      <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
+        <svg className="w-5 h-5 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8z" clipRule="evenodd" />
         </svg>
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-900">{workspace.name}</p>
-        <p className="text-xs text-gray-500">{workspace.groupName}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{workspace.name}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{workspace.groupName}</p>
       </div>
     </div>
     <div className="flex items-center space-x-2">
       <StatusBadge status={workspace.status} />
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-500 dark:text-gray-400">
         {formatRelativeTime(workspace.updatedAt)}
       </p>
     </div>

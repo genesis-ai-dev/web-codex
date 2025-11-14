@@ -11,9 +11,9 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     const baseClass = 'rounded-xl border';
     
     const variants = {
-      default: 'bg-white border-gray-200 shadow-soft',
-      outline: 'bg-white border-gray-300',
-      shadow: 'bg-white border-gray-200 shadow-medium',
+      default: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-soft',
+      outline: 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600',
+      shadow: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-medium',
     };
     
     const paddings = {
@@ -62,7 +62,7 @@ export const CardTitle = React.forwardRef<HTMLParagraphElement, CardTitleProps>(
   ({ className, children, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn('font-semibold leading-none tracking-tight', className)}
+      className={cn('font-semibold leading-none tracking-tight text-gray-900 dark:text-gray-100', className)}
       {...props}
     >
       {children}
@@ -78,7 +78,7 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescri
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn('text-sm text-gray-600', className)}
+      className={cn('text-sm text-gray-600 dark:text-gray-400', className)}
       {...props}
     />
   )
