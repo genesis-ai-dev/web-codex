@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './Button';
+import { ThemeToggle } from './ThemeToggle';
 import { cn } from '../utils';
 
 interface NavItem {
@@ -67,17 +68,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile sidebar */}
       <div className={cn(
         'fixed inset-0 z-40 md:hidden',
         sidebarOpen ? 'block' : 'hidden'
       )}>
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75" 
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
           onClick={() => setSidebarOpen(false)}
         />
-        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-gray-800">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button
               type="button"
@@ -102,10 +103,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main content */}
       <div className="md:pl-64 flex flex-col flex-1">
         {/* Top navbar */}
-        <div className="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-50">
+        <div className="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-50 dark:bg-gray-900">
           <button
             type="button"
-            className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
             onClick={() => setSidebarOpen(true)}
           >
             <span className="sr-only">Open sidebar</span>
@@ -116,7 +117,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-6">
               <div className="flex-1 min-w-0">
@@ -125,6 +126,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               
               {/* User menu */}
               <div className="flex items-center space-x-4">
+                <ThemeToggle />
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
                     <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
@@ -134,10 +136,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </div>
                   </div>
                   <div className="hidden md:block">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {user?.name || user?.username}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {user?.email}
                     </div>
                   </div>
@@ -170,7 +172,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ navigation, currentPath }) => {
   return (
-    <div className="flex flex-col flex-grow border-r border-gray-200 pt-5 bg-white overflow-y-auto">
+    <div className="flex flex-col flex-grow border-r border-gray-200 dark:border-gray-700 pt-5 bg-white dark:bg-gray-800 overflow-y-auto">
       <div className="flex items-center flex-shrink-0 px-4">
         <div className="flex items-center space-x-3">
           <div className="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center">
@@ -178,7 +180,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, currentPath }) => {
               <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8z" clipRule="evenodd" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">Codex Web</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Codex Web</h1>
         </div>
       </div>
       <div className="mt-5 flex-grow flex flex-col">
@@ -193,13 +195,13 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, currentPath }) => {
                 className={cn(
                   'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                   isActive
-                    ? 'bg-primary-100 text-primary-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
                 )}
               >
                 <div className={cn(
                   'mr-3 flex-shrink-0',
-                  isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+                  isActive ? 'text-primary-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400'
                 )}>
                   {item.icon}
                 </div>

@@ -7,9 +7,13 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
-  
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gray-50 text-gray-900 transition-colors duration-200;
+  }
+
+  .dark body {
+    @apply bg-gray-900 text-gray-100;
   }
 }
 
@@ -23,7 +27,7 @@
   }
   
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-primary-500;
+    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-primary-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600;
   }
   
   .btn-success {
@@ -47,11 +51,11 @@
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-soft border border-gray-200;
+    @apply bg-white rounded-xl shadow-soft border border-gray-200 dark:bg-gray-800 dark:border-gray-700;
   }
   
   .input {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500;
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400;
   }
   
   .status-dot {
@@ -83,12 +87,17 @@
 
 /* Loading spinner */
 .spinner {
-  border: 2px solid #f3f3f3;
+  border: 2px solid #e5e7eb;
   border-top: 2px solid #3498db;
   border-radius: 50%;
   width: 20px;
   height: 20px;
   animation: spin 1s linear infinite;
+}
+
+.dark .spinner {
+  border-color: #374151;
+  border-top-color: #3498db;
 }
 
 @keyframes spin {
@@ -102,7 +111,7 @@
 }
 
 .workspace-card:hover {
-  @apply border-primary-200;
+  @apply border-primary-200 dark:border-primary-700;
 }
 
 /* Code editor theme preview */
@@ -119,11 +128,23 @@
   background: #f1f1f1;
 }
 
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 3px;
 }
 
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
