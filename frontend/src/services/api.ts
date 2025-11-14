@@ -76,6 +76,12 @@ class ApiService {
     };
   }
 
+  // Auth
+  async getCurrentUser(): Promise<User> {
+    const response = await this.client.get('/auth/me');
+    return response.data.user;
+  }
+
   // Dashboard
   async getDashboardStats(): Promise<DashboardStats> {
     const response = await this.client.get('/dashboard/stats');

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { AuthProvider as OidcAuthProvider, useAuth as useOidcAuth } from 'react-oidc-context';
 import { User, AuthConfig } from '../types';
+import { apiService } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -21,18 +22,44 @@ interface AuthProviderProps {
 // Inner component that uses OIDC hooks
 function AuthContextProvider({ children }: { children: ReactNode }) {
   const oidcAuth = useOidcAuth();
+  const [backendUser, setBackendUser] = useState<User | null>(null);
+  const [isFetchingUser, setIsFetchingUser] = useState(false);
 
-  // Map OIDC user to our User type
-  const user: User | null = oidcAuth.user
+  // Fetch user from backend when authenticated
+  useEffect(() => {
+    const fetchUserFromBackend = async () => {
+      if (oidcAuth.isAuthenticated && oidcAuth.user && !isFetchingUser) {
+        try {
+          setIsFetchingUser(true);
+          // Call the backend to get the synced user object
+          const response = await apiService.getCurrentUser();
+          setBackendUser(response);
+        } catch (error) {
+          console.error('Failed to fetch user from backend:', error);
+          // Fallback to JWT user if backend call fails
+          setBackendUser(null);
+        } finally {
+          setIsFetchingUser(false);
+        }
+      } else if (!oidcAuth.isAuthenticated) {
+        setBackendUser(null);
+      }
+    };
+
+    fetchUserFromBackend();
+  }, [oidcAuth.isAuthenticated, oidcAuth.user]);
+
+  // Use backend user if available, otherwise fall back to JWT user
+  const user: User | null = backendUser || (oidcAuth.user
     ? {
         id: oidcAuth.user.profile.sub || '',
         username: oidcAuth.user.profile.preferred_username || oidcAuth.user.profile.email || '',
         email: oidcAuth.user.profile.email || '',
         name: oidcAuth.user.profile.name || oidcAuth.user.profile.email || '',
-        groups: (oidcAuth.user.profile['cognito:groups'] as string[]) || [],
-        isAdmin: ((oidcAuth.user.profile['cognito:groups'] as string[]) || []).includes('platform-admins'),
+        groups: [],
+        isAdmin: false,
       }
-    : null;
+    : null);
 
   const login = async () => {
     await oidcAuth.signinRedirect();

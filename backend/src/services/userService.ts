@@ -10,17 +10,12 @@ class UserService {
       // These are OAuth provider groups, NOT application groups
       const isAdmin = (jwtPayload.groups || []).includes('platform-admins');
 
-      // IMPORTANT: Always check by email first before creating
-      // This is the ONLY place where we check, to avoid race conditions
+      // Check if user exists by email
       let user = await dynamodbService.getUserByEmail(jwtPayload.email);
 
       if (!user) {
-        // Double-check by email one more time RIGHT before creating
-        // to minimize race condition window
-        user = await dynamodbService.getUserByEmail(jwtPayload.email);
-
-        if (!user) {
-          // Create new user - only if still doesn't exist
+        // User doesn't exist, attempt to create
+        try {
           user = await dynamodbService.createUser({
             id: `usr_${uuidv4().replace(/-/g, '')}`,
             username: jwtPayload.username || jwtPayload.email.split('@')[0],
@@ -30,8 +25,23 @@ class UserService {
           });
 
           logger.info(`New user created: ${user.email} (admin: ${isAdmin})`);
-        } else {
-          logger.info(`User appeared between checks (race condition handled): ${user.email}`);
+        } catch (createError: any) {
+          // Handle race condition: another request created the user at the same time
+          if (createError.message?.includes('User already exists') ||
+              createError.code === 'ConditionalCheckFailedException') {
+            logger.info(`User creation race condition detected for ${jwtPayload.email}, fetching existing user`);
+
+            // Fetch the user that was created by the other request
+            user = await dynamodbService.getUserByEmail(jwtPayload.email);
+
+            if (!user) {
+              // This should never happen, but handle it just in case
+              throw new Error(`Failed to fetch user after race condition: ${jwtPayload.email}`);
+            }
+          } else {
+            // Some other error occurred
+            throw createError;
+          }
         }
       }
 
