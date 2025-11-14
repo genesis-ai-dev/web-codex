@@ -64,7 +64,7 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({ isEmbedded = false }) =>
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="text-center">
         <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-        <p className="text-gray-500">Loading groups...</p>
+        <p className="text-gray-500 dark:text-gray-400">Loading groups...</p>
       </div>
     </div>
   );
@@ -78,10 +78,10 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({ isEmbedded = false }) =>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
             Failed to load groups
           </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={loadGroups}>
             Try again
           </Button>
@@ -103,8 +103,8 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({ isEmbedded = false }) =>
         {/* Page header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Groups</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Groups</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
               {isAdmin
                 ? 'Manage groups, members, and resource quotas for your organization.'
                 : 'View your groups and their resource quotas.'
@@ -132,15 +132,15 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({ isEmbedded = false }) =>
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
               {isAdmin ? 'No groups yet' : 'You are not a member of any groups'}
             </h3>
-            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
               {isAdmin
                 ? 'Create your first group to organize workspaces and manage resources.'
                 : 'Contact your administrator to be added to a group.'
@@ -198,9 +198,9 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isAdmin, onDelete }) => {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg">{group.displayName}</CardTitle>
-            <p className="text-sm text-gray-500 mt-1">{group.namespace}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{group.namespace}</p>
             {group.description && (
-              <p className="text-sm text-gray-600 mt-2">{group.description}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{group.description}</p>
             )}
           </div>
           {isAdmin && (
@@ -221,9 +221,9 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isAdmin, onDelete }) => {
                     className="fixed inset-0 z-10"
                     onClick={() => setShowMenu(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20 border border-gray-200 dark:border-gray-700">
                     <button
-                      className="w-full text-left px-4 py-2 text-sm text-error-600 hover:bg-error-50 rounded-md"
+                      className="w-full text-left px-4 py-2 text-sm text-error-600 hover:bg-error-50 dark:hover:bg-error-900 rounded-md"
                       onClick={() => {
                         handleDelete();
                         setShowMenu(false);
@@ -250,7 +250,7 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isAdmin, onDelete }) => {
       <CardContent>
         <div className="space-y-4">
           {/* Member count */}
-          <div className="flex items-center text-sm text-gray-600">
+          <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -259,29 +259,29 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isAdmin, onDelete }) => {
 
           {/* Resource quotas */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Resource Quotas</h4>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Resource Quotas</h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-gray-50 rounded-md p-2">
-                <div className="text-gray-500 text-xs">CPU</div>
-                <div className="font-medium text-gray-900">{formatCPU(group.resourceQuota.cpu)}</div>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-2">
+                <div className="text-gray-500 dark:text-gray-400 text-xs">CPU</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100">{formatCPU(group.resourceQuota.cpu)}</div>
               </div>
-              <div className="bg-gray-50 rounded-md p-2">
-                <div className="text-gray-500 text-xs">Memory</div>
-                <div className="font-medium text-gray-900">{formatMemory(group.resourceQuota.memory)}</div>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-2">
+                <div className="text-gray-500 dark:text-gray-400 text-xs">Memory</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100">{formatMemory(group.resourceQuota.memory)}</div>
               </div>
-              <div className="bg-gray-50 rounded-md p-2">
-                <div className="text-gray-500 text-xs">Storage</div>
-                <div className="font-medium text-gray-900">{formatMemory(group.resourceQuota.storage)}</div>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-2">
+                <div className="text-gray-500 dark:text-gray-400 text-xs">Storage</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100">{formatMemory(group.resourceQuota.storage)}</div>
               </div>
-              <div className="bg-gray-50 rounded-md p-2">
-                <div className="text-gray-500 text-xs">Max Pods</div>
-                <div className="font-medium text-gray-900">{group.resourceQuota.pods}</div>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-2">
+                <div className="text-gray-500 dark:text-gray-400 text-xs">Max Pods</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100">{group.resourceQuota.pods}</div>
               </div>
             </div>
           </div>
 
           {/* Created date */}
-          <div className="text-xs text-gray-500 pt-3 border-t border-gray-100">
+          <div className="text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-100 dark:border-gray-700">
             Created: {new Date(group.createdAt).toLocaleDateString()}
           </div>
         </div>
@@ -443,7 +443,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         />
 
         <div>
-          <h3 className="text-sm font-medium text-gray-900 mb-4">Resource Quotas</h3>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Resource Quotas</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="CPU Cores"
@@ -492,7 +492,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-end space-x-3 pt-6 border-t">
+        <div className="flex justify-end space-x-3 pt-6 border-t dark:border-gray-700">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
