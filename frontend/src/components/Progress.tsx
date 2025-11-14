@@ -52,12 +52,12 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {(label || showValue) && (
           <div className="flex justify-between items-center">
             {label && (
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {label}
               </span>
             )}
             {showValue && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {Math.round(percentage)}%
               </span>
             )}
@@ -66,7 +66,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         <div
           ref={ref}
           className={cn(
-            'w-full bg-gray-200 rounded-full overflow-hidden',
+            'w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden',
             heights[size],
             className
           )}
@@ -107,10 +107,10 @@ export const ResourceProgress: React.FC<ResourceProgressProps> = ({
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           {label}
         </span>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           {used.toFixed(1)} / {total.toFixed(1)} {unit}
         </span>
       </div>
@@ -180,7 +180,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="none"
-          className="text-gray-200"
+          className="text-gray-200 dark:text-gray-700"
         />
         {/* Progress circle */}
         <circle
@@ -197,7 +197,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
         />
       </svg>
       {showValue && (
-        <span className="absolute text-sm font-medium text-gray-700">
+        <span className="absolute text-sm font-medium text-gray-700 dark:text-gray-300">
           {Math.round(percentage)}%
         </span>
       )}
