@@ -162,15 +162,14 @@ async function handleExecConnection(
     });
 
     // Start exec session with proper TTY settings
-    // Configure TTY for web terminal:
-    // - icrnl: map CR to NL on input (so Enter key works)
+    // Configure TTY for web terminal - use sane defaults then adjust:
+    // - Start with 'sane' to get reasonable defaults
+    // - opost: enable output post-processing
     // - onlcr: map NL to CRNL on output (proper line endings)
-    // - echo: enable echo
-    // - icanon: enable canonical mode
     execStream = await kubernetesService.execIntoPod(
       namespace,
       podName,
-      ['/bin/bash', '-c', 'stty icrnl onlcr echo icanon; export TERM=xterm-256color; if command -v bash > /dev/null; then exec bash; else exec sh; fi']
+      ['/bin/bash', '-c', 'stty sane; stty opost onlcr; export TERM=xterm-256color; exec bash -i']
     );
 
     // Forward data from browser to pod
