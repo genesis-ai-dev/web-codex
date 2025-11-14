@@ -83,7 +83,7 @@ export const WorkspacesPage: React.FC = () => {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading workspaces...</p>
+            <p className="text-gray-500 dark:text-gray-400">Loading workspaces...</p>
           </div>
         </div>
       </Layout>
@@ -101,10 +101,10 @@ export const WorkspacesPage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Failed to load workspaces
               </h3>
-              <p className="text-gray-600 mb-4">{error}</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
               <Button onClick={loadData}>
                 Try again
               </Button>
@@ -121,8 +121,8 @@ export const WorkspacesPage: React.FC = () => {
         {/* Page header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Workspaces</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Workspaces</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
               Manage your development environments and collaborate with your team.
             </p>
           </div>
@@ -146,13 +146,13 @@ export const WorkspacesPage: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No workspaces yet</h3>
-            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No workspaces yet</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
               Create your first workspace to start developing in the browser with full VSCode functionality.
             </p>
             <Button onClick={() => setShowCreateModal(true)}>
@@ -222,7 +222,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
           <div className="flex-1 cursor-pointer" onClick={onNavigate}>
             <CardTitle className="text-lg hover:text-primary-600 transition-colors">{workspace.name}</CardTitle>
             {workspace.description && (
-              <p className="text-sm text-gray-600 mt-1">{workspace.description}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{workspace.description}</p>
             )}
           </div>
           <StatusBadge status={workspace.status} />
@@ -232,7 +232,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
       <CardContent>
         <div className="space-y-4">
           {/* Group info */}
-          <div className="flex items-center text-sm text-gray-600">
+          <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -242,12 +242,12 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
           {/* Resource info */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-medium text-gray-700">CPU:</span>
-              <span className="ml-2 text-gray-600">{formatCPU(workspace.resources.cpu)}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">CPU:</span>
+              <span className="ml-2 text-gray-600 dark:text-gray-400">{formatCPU(workspace.resources.cpu)}</span>
             </div>
             <div>
-              <span className="font-medium text-gray-700">Memory:</span>
-              <span className="ml-2 text-gray-600">{formatMemory(workspace.resources.memory)}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">Memory:</span>
+              <span className="ml-2 text-gray-600 dark:text-gray-400">{formatMemory(workspace.resources.memory)}</span>
             </div>
           </div>
 
@@ -270,15 +270,15 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
           )}
 
           {/* Last accessed */}
-          <div className="text-xs text-gray-500">
-            Last accessed: {workspace.lastAccessedAt 
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Last accessed: {workspace.lastAccessedAt
               ? formatRelativeTime(workspace.lastAccessedAt)
               : 'Never'
             }
           </div>
 
           {/* Actions */}
-          <div className="flex space-x-2 pt-4 border-t border-gray-100">
+          <div className="flex space-x-2 pt-4 border-t border-gray-100 dark:border-gray-700">
             {workspace.status === 'running' ? (
               <>
                 <Button
@@ -531,12 +531,12 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, items }) => {
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20 border border-gray-200 dark:border-gray-700">
             {items.map((item, index) => (
               <button
                 key={index}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-md last:rounded-b-md ${
-                  item.destructive ? 'text-error-600 hover:bg-error-50' : 'text-gray-700'
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-md last:rounded-b-md ${
+                  item.destructive ? 'text-error-600 hover:bg-error-50 dark:hover:bg-error-900' : 'text-gray-700 dark:text-gray-300'
                 }`}
                 onClick={() => {
                   item.onClick();
