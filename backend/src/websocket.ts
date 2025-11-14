@@ -169,7 +169,7 @@ async function handleExecConnection(
     execStream = await kubernetesService.execIntoPod(
       namespace,
       podName,
-      ['/bin/bash', '-c', 'stty sane; stty opost onlcr; export TERM=xterm-256color; exec bash -i']
+      ['/bin/bash', '-c', 'stty sane; stty icrnl ocrnl opost onlcr; export TERM=xterm-256color; exec bash -i']
     );
 
     // Forward data from browser to pod
