@@ -227,8 +227,14 @@ async function handleExecConnection(
         }
       });
 
-      execStream.on('close', () => {
-        logger.info('Exec stream closed:', { workspaceId, podName });
+      execStream.on('close', (code?: number, reason?: string) => {
+        logger.info('Exec stream closed:', {
+          workspaceId,
+          podName,
+          code,
+          reason,
+          wsReadyState: ws.readyState,
+        });
         if (ws.readyState === WebSocket.OPEN) {
           ws.close();
         }
@@ -236,7 +242,7 @@ async function handleExecConnection(
     }
 
     // Handle WebSocket close
-    ws.on('close', async () => {
+    ws.on('close', async (code: number, reason: Buffer) => {
       const sessionDuration = Date.now() - sessionStartTime.getTime();
 
       logger.info('Admin exec session ended:', {
@@ -244,6 +250,8 @@ async function handleExecConnection(
         workspaceId,
         podName,
         durationMs: sessionDuration,
+        closeCode: code,
+        closeReason: reason.toString(),
       });
 
       // Close exec stream

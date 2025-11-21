@@ -98,7 +98,7 @@ export const commonSchemas = {
         'string.pattern.base': 'Name must be a valid Kubernetes name (lowercase alphanumeric with hyphens)',
       }),
     displayName: Joi.string().min(1).max(100).required(),
-    description: Joi.string().max(500).allow('').optional(),
+    description: Joi.string().max(500).allow('', null).optional(),
     namespace: Joi.string()
       .regex(/^group-[a-z0-9]([-a-z0-9]*[a-z0-9])?$/)
       .required()
@@ -115,7 +115,7 @@ export const commonSchemas = {
 
   updateGroup: Joi.object({
     displayName: Joi.string().min(1).max(100).optional(),
-    description: Joi.string().max(500).optional(),
+    description: Joi.string().max(500).allow('', null).optional(),
     resourceQuota: Joi.object({
       cpu: Joi.string().optional(),
       memory: Joi.string().optional(),
@@ -135,7 +135,7 @@ export const commonSchemas = {
       .min(1)
       .max(63)
       .required(),
-    description: Joi.string().max(500).allow('').optional(),
+    description: Joi.string().max(500).allow('', null).optional(),
     groupId: Joi.string().required(),
     image: Joi.string().default('codercom/code-server:latest'),
     resources: Joi.object({
@@ -151,7 +151,7 @@ export const commonSchemas = {
       .min(1)
       .max(63)
       .optional(),
-    description: Joi.string().max(500).optional(),
+    description: Joi.string().max(500).allow('', null).optional(),
     resources: Joi.object({
       cpu: Joi.string().optional(),
       memory: Joi.string().optional(),
