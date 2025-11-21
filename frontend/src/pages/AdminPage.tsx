@@ -174,6 +174,7 @@ const WorkspacesTabContent: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [terminalWorkspace, setTerminalWorkspace] = React.useState<any | null>(null);
+  const [deletingWorkspace, setDeletingWorkspace] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     loadWorkspaces();
@@ -190,6 +191,28 @@ const WorkspacesTabContent: React.FC = () => {
       setError('Failed to load workspaces');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async (workspaceId: string, workspaceName: string) => {
+    if (!window.confirm(`Are you sure you want to delete workspace "${workspaceName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingWorkspace(workspaceId);
+      await require('../services/api').apiService.adminDeleteWorkspace(workspaceId);
+
+      // Remove the workspace from the list
+      setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
+
+      // Show success message (you could use a toast notification here)
+      console.log(`Workspace ${workspaceName} deleted successfully`);
+    } catch (err) {
+      console.error('Failed to delete workspace:', err);
+      alert(`Failed to delete workspace: ${err.message || 'Unknown error'}`);
+    } finally {
+      setDeletingWorkspace(null);
     }
   };
 
@@ -283,7 +306,7 @@ const WorkspacesTabContent: React.FC = () => {
                         {workspace.groupName}
                       </div>
                     </div>
-                    <div className="ml-4 flex-shrink-0">
+                    <div className="ml-4 flex-shrink-0 flex gap-2">
                       {workspace.status === 'running' && (
                         <button
                           onClick={() => setTerminalWorkspace(workspace)}
@@ -295,6 +318,28 @@ const WorkspacesTabContent: React.FC = () => {
                           Open Terminal
                         </button>
                       )}
+                      <button
+                        onClick={() => handleDeleteWorkspace(workspace.id, workspace.name)}
+                        disabled={deletingWorkspace === workspace.id}
+                        className="inline-flex items-center px-3 py-2 border border-red-300 dark:border-red-600 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingWorkspace === workspace.id ? (
+                          <>
+                            <svg className="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>

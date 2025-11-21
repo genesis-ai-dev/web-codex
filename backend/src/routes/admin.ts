@@ -4,6 +4,7 @@ import { validate, validateQuery, validateParams, commonSchemas } from '../middl
 import { adminRateLimit } from '../middleware/rateLimiting';
 import { AuthenticatedRequest, User, PaginatedResponse, AuditLog } from '../types';
 import { dynamodbService } from '../services/dynamodbService';
+import { kubernetesService } from '../services/kubernetesService';
 import { userService } from '../services/userService';
 import { logger } from '../config/logger';
 import { NotFoundError } from '../utils/errors';
@@ -485,6 +486,82 @@ router.get('/workspaces',
       res.json(allWorkspaces);
     } catch (error) {
       logger.error('Failed to list all workspaces:', error);
+      throw error;
+    }
+  }
+);
+
+// Delete workspace (admin override - can delete any workspace)
+router.delete('/workspaces/:workspaceId',
+  validateParams(commonSchemas.workspaceId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+
+      const workspace = await dynamodbService.getWorkspace(workspaceId);
+      if (!workspace) {
+        throw new NotFoundError('Workspace not found');
+      }
+
+      const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
+
+      // Get the group to find the namespace
+      const group = await dynamodbService.getGroup(workspace.groupId);
+      const namespace = group?.namespace;
+
+      // Delete Kubernetes resources (if namespace exists)
+      if (namespace) {
+        try {
+          await kubernetesService.deleteDeployment(namespace, k8sName);
+          await kubernetesService.deleteNamespacedService(k8sName, namespace);
+          await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
+          // TODO: Re-enable PVC deletion once storage is configured
+          // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+
+          // Remove this workspace from the nginx proxy ConfigMap
+          await kubernetesService.removeWorkspaceFromNginxProxyConfig(namespace, k8sName);
+
+          logger.info(`Kubernetes resources deleted for workspace ${workspaceId} in namespace ${namespace} by admin ${req.user!.id}`);
+        } catch (k8sError) {
+          logger.error(`Failed to delete K8s resources for workspace ${workspaceId}:`, k8sError);
+          // Continue with database deletion even if K8s deletion fails
+        }
+      } else {
+        logger.warn(`Group ${workspace.groupId} not found for workspace ${workspaceId}, skipping K8s cleanup`);
+      }
+
+      // Delete from database
+      await dynamodbService.deleteWorkspace(workspaceId);
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'admin_delete_workspace',
+        resource: `workspace:${workspaceId}`,
+        details: {
+          workspaceName: workspace.name,
+          workspaceUserId: workspace.userId,
+          groupId: workspace.groupId
+        },
+        success: true,
+      });
+
+      logger.info(`Workspace ${workspaceId} deleted by admin ${req.user!.id}`);
+      res.status(204).send();
+    } catch (error) {
+      // Log failed admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'admin_delete_workspace',
+        resource: `workspace:${req.params.workspaceId}`,
+        details: { error: error.message },
+        success: false,
+        error: error.message,
+      });
+
+      logger.error('Failed to delete workspace:', error);
       throw error;
     }
   }

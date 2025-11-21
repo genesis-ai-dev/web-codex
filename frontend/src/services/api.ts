@@ -230,6 +230,11 @@ class ApiService {
     return response.data;
   }
 
+  // Admin: Delete any workspace (admin override)
+  async adminDeleteWorkspace(workspaceId: string): Promise<void> {
+    await this.client.delete(`/admin/workspaces/${workspaceId}`);
+  }
+
   // Health check
   async getHealth(): Promise<{ status: string; timestamp: string }> {
     const response = await this.client.get('/health');
