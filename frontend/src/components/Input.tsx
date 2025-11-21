@@ -27,9 +27,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label 
+          <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
           >
             {label}
           </label>
@@ -46,13 +46,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={type}
             id={inputId}
             className={cn(
-              'block w-full px-3 py-2 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors',
+              'block w-full px-3 py-2 border rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100',
               leftIcon ? 'pl-10' : '',
               rightIcon ? 'pr-10' : '',
-              hasError 
-                ? 'border-error-300 focus:border-error-500 focus:ring-error-500' 
-                : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500',
-              props.disabled ? 'bg-gray-100 cursor-not-allowed' : '',
+              hasError
+                ? 'border-error-300 dark:border-error-600 focus:border-error-500 focus:ring-error-500'
+                : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500',
+              props.disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60' : '',
               className
             )}
             ref={ref}
@@ -67,12 +67,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p className="text-sm text-error-600">
+          <p className="text-sm text-error-600 dark:text-error-400">
             {error}
           </p>
         )}
         {helpText && !error && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {helpText}
           </p>
         )}
@@ -105,9 +105,9 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label 
+          <label
             htmlFor={textareaId}
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
           >
             {label}
           </label>
@@ -116,23 +116,23 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
           id={textareaId}
           rows={rows}
           className={cn(
-            'block w-full px-3 py-2 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors resize-vertical',
-            hasError 
-              ? 'border-error-300 focus:border-error-500 focus:ring-error-500' 
-              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500',
-            props.disabled ? 'bg-gray-100 cursor-not-allowed' : '',
+            'block w-full px-3 py-2 border rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors resize-vertical bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+            hasError
+              ? 'border-error-300 dark:border-error-600 focus:border-error-500 focus:ring-error-500'
+              : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500',
+            props.disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60' : '',
             className
           )}
           ref={ref}
           {...props}
         />
         {error && (
-          <p className="text-sm text-error-600">
+          <p className="text-sm text-error-600 dark:text-error-400">
             {error}
           </p>
         )}
         {helpText && !error && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {helpText}
           </p>
         )}
@@ -168,9 +168,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label 
+          <label
             htmlFor={selectId}
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
           >
             {label}
           </label>
@@ -178,11 +178,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         <select
           id={selectId}
           className={cn(
-            'block w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors',
-            hasError 
-              ? 'border-error-300 focus:border-error-500 focus:ring-error-500' 
-              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500',
-            props.disabled ? 'bg-gray-100 cursor-not-allowed' : '',
+            'block w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+            hasError
+              ? 'border-error-300 dark:border-error-600 focus:border-error-500 focus:ring-error-500'
+              : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500',
+            props.disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60' : '',
             className
           )}
           ref={ref}
@@ -204,12 +204,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           ))}
         </select>
         {error && (
-          <p className="text-sm text-error-600">
+          <p className="text-sm text-error-600 dark:text-error-400">
             {error}
           </p>
         )}
         {helpText && !error && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {helpText}
           </p>
         )}
