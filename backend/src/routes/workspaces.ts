@@ -493,25 +493,38 @@ router.post('/:workspaceId/sync',
 
       const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
 
+      logger.info(`Starting sync for workspace ${workspaceId} in namespace ${namespace} with k8s name ${k8sName}`);
+
       // Get current state from Kubernetes
       const k8sStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
+      logger.info(`Got K8s status for ${workspaceId}: ${k8sStatus}`);
+
       const k8sDetails = await kubernetesService.getDeploymentDetails(namespace, k8sName);
-      const metrics = await kubernetesService.getNamespaceMetrics(namespace);
+      logger.info(`Got K8s details for ${workspaceId}:`, k8sDetails);
 
       // Update workspace with K8s state
       const updates: Partial<Workspace> = {
         status: k8sStatus,
-        usage: metrics,
       };
 
       if (k8sDetails) {
         updates.image = k8sDetails.image;
         updates.replicas = k8sDetails.replicas;
+        logger.info(`Will update image to: ${k8sDetails.image}, replicas to: ${k8sDetails.replicas}`);
       }
 
+      // Try to get metrics, but don't fail if it errors
+      try {
+        const metrics = await kubernetesService.getNamespaceMetrics(namespace);
+        updates.usage = metrics;
+      } catch (metricsError) {
+        logger.warn(`Failed to get metrics for workspace ${workspaceId}, continuing without metrics:`, metricsError);
+      }
+
+      logger.info(`Updating workspace ${workspaceId} with:`, updates);
       const updatedWorkspace = await dynamodbService.updateWorkspace(workspaceId, updates);
 
-      logger.info(`Workspace synced from K8s: ${workspaceId} by user ${user.id}`);
+      logger.info(`Workspace synced from K8s: ${workspaceId} by user ${user.id}. Updated fields:`, Object.keys(updates));
       res.json(updatedWorkspace);
     } catch (error) {
       logger.error('Failed to sync workspace from K8s:', error);

@@ -368,6 +368,9 @@ class DynamoDBService {
         }
       }
 
+      logger.info(`Updating workspace ${id} with expression: SET ${updateExpression.join(', ')}`);
+      logger.info(`Attribute values:`, expressionAttributeValues);
+
       const result = await this.dynamodb.update({
         TableName: this.tableName,
         Key: { PK: `WORKSPACE#${id}`, SK: `WORKSPACE#${id}` },
@@ -378,7 +381,7 @@ class DynamoDBService {
         ReturnValues: 'ALL_NEW',
       }).promise();
 
-      logger.info(`Workspace updated: ${id}`);
+      logger.info(`Workspace updated successfully: ${id}. New attributes:`, result.Attributes);
       return result.Attributes as Workspace;
     } catch (error) {
       if (error.code === 'ConditionalCheckFailedException') {
