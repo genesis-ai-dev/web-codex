@@ -359,7 +359,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
     name: '',
     description: '',
     groupId: '',
-    image: 'ghcr.io/genesis-ai-dev/codex:master',
+    image: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
     resources: {
       cpu: '2',
       memory: '4Gi',
@@ -392,7 +392,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
         name: '',
         description: '',
         groupId: '',
-        image: 'ghcr.io/genesis-ai-dev/codex:master',
+        image: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
         resources: {
           cpu: '2',
           memory: '4Gi',
