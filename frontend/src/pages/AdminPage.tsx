@@ -208,9 +208,9 @@ const WorkspacesTabContent: React.FC = () => {
 
       // Show success message (you could use a toast notification here)
       console.log(`Workspace ${workspaceName} deleted successfully`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete workspace:', err);
-      alert(`Failed to delete workspace: ${err.message || 'Unknown error'}`);
+      alert(`Failed to delete workspace: ${err?.message || 'Unknown error'}`);
     } finally {
       setDeletingWorkspace(null);
     }
