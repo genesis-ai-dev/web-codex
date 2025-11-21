@@ -88,7 +88,7 @@ export const WorkspaceDetailsPage: React.FC = () => {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading workspace details...</p>
+            <p className="text-gray-500 dark:text-gray-400">Loading workspace details...</p>
           </div>
         </div>
       </Layout>
@@ -106,10 +106,10 @@ export const WorkspaceDetailsPage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Failed to load workspace
               </h3>
-              <p className="text-gray-600 mb-4">{error || 'Workspace not found'}</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{error || 'Workspace not found'}</p>
               <div className="flex space-x-3 justify-center">
                 <Button onClick={loadData} variant="secondary">
                   Try again
@@ -144,9 +144,9 @@ export const WorkspaceDetailsPage: React.FC = () => {
               </svg>
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900">{workspace.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{workspace.name}</h1>
               {workspace.description && (
-                <p className="text-gray-600 mt-1">{workspace.description}</p>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">{workspace.description}</p>
               )}
             </div>
             <div className="flex items-center space-x-3">
@@ -244,20 +244,20 @@ export const WorkspaceDetailsPage: React.FC = () => {
                 <div className="space-y-4">
                   {/* Password Field */}
                   <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 text-gray-400">
+                    <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500">Password</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Password</p>
                       <div className="flex items-center space-x-2 mt-0.5">
-                        <p className="text-sm font-mono text-gray-900 break-all">
+                        <p className="text-sm font-mono text-gray-900 dark:text-gray-100 break-all">
                           {showPassword ? workspace.password : '••••••••••••••••••••••••'}
                         </p>
                         <button
                           onClick={() => setShowPassword(!showPassword)}
-                          className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+                          className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                           title={showPassword ? 'Hide password' : 'Show password'}
                         >
                           {showPassword ? (
@@ -273,7 +273,7 @@ export const WorkspaceDetailsPage: React.FC = () => {
                         </button>
                         <button
                           onClick={handleCopyPassword}
-                          className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+                          className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                           title="Copy password"
                         >
                           {passwordCopied ? (
@@ -337,16 +337,16 @@ export const WorkspaceDetailsPage: React.FC = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">CPU</span>
-                    <span className="font-medium">{formatCPU(workspace.resources.cpu)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">CPU</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{formatCPU(workspace.resources.cpu)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Memory</span>
-                    <span className="font-medium">{formatMemory(workspace.resources.memory)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Memory</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{formatMemory(workspace.resources.memory)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Storage</span>
-                    <span className="font-medium">{workspace.resources.storage}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Storage</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{workspace.resources.storage}</span>
                   </div>
                 </div>
               </CardContent>
@@ -395,17 +395,17 @@ const ComponentHealthCard: React.FC<ComponentHealthCardProps> = ({ component }) 
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
       <div className="flex items-start space-x-4">
-        <div className={`flex-shrink-0 p-2 rounded-lg ${component.healthy ? 'bg-success-100 text-success-600' : 'bg-error-100 text-error-600'}`}>
+        <div className={`flex-shrink-0 p-2 rounded-lg ${component.healthy ? 'bg-success-100 text-success-600 dark:bg-success-900/30 dark:text-success-400' : 'bg-error-100 text-error-600 dark:bg-error-900/30 dark:text-error-400'}`}>
           {getIcon()}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-900">{component.name}</h4>
-              <p className="text-xs text-gray-500 mt-0.5">{component.status}</p>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{component.name}</h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{component.status}</p>
             </div>
             <div className="flex items-center space-x-2">
               {component.healthy ? (
@@ -420,7 +420,7 @@ const ComponentHealthCard: React.FC<ComponentHealthCardProps> = ({ component }) 
               {Object.keys(component.details).length > 0 && (
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 >
                   <svg className={`w-5 h-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -430,11 +430,11 @@ const ComponentHealthCard: React.FC<ComponentHealthCardProps> = ({ component }) 
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 mt-2">{component.reason}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{component.reason}</p>
 
           {expanded && Object.keys(component.details).length > 0 && (
-            <div className="mt-3 p-3 bg-gray-50 rounded text-xs">
-              <pre className="whitespace-pre-wrap font-mono text-gray-700">
+            <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded text-xs">
+              <pre className="whitespace-pre-wrap font-mono text-gray-700 dark:text-gray-300">
                 {JSON.stringify(component.details, null, 2)}
               </pre>
             </div>
@@ -454,12 +454,12 @@ interface InfoItemProps {
 const InfoItem: React.FC<InfoItemProps> = ({ label, value, icon }) => {
   return (
     <div className="flex items-start space-x-3">
-      <div className="flex-shrink-0 text-gray-400">
+      <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-sm text-gray-900 mt-0.5 break-words">{value}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-sm text-gray-900 dark:text-gray-100 mt-0.5 break-words">{value}</p>
       </div>
     </div>
   );
