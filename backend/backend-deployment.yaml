@@ -13,7 +13,7 @@ metadata:
   name: vscode-platform-backend
 rules:
 - apiGroups: [""]
-  resources: ["namespaces", "pods", "services", "persistentvolumeclaims", "resourcequotas", "secrets"]
+  resources: ["namespaces", "pods", "services", "persistentvolumeclaims", "resourcequotas", "secrets", "configmaps"]
   verbs: ["get", "list", "create", "update", "delete", "watch"]
 - apiGroups: [""]
   resources: ["pods/exec", "pods/log"]
