@@ -265,7 +265,9 @@ class KubernetesService {
       proxy_set_header Connection "upgrade";
       proxy_read_timeout 3600s;
       proxy_send_timeout 3600s;
-      # Rewrite redirects
+      # Rewrite redirects - handle both with and without port numbers
+      proxy_redirect ~^http://[^/]+(:\d+)?(/.*)?$ ${svcPathPrefix}$2;
+      proxy_redirect ~^https://[^/]+(:\d+)?(/.*)?$ ${svcPathPrefix}$2;
       proxy_redirect / ${svcPathPrefix}/;
     }`;
       }).join('\n');
@@ -274,6 +276,9 @@ class KubernetesService {
 http {
   server {
     listen 8080;
+    # Prevent nginx from adding port numbers to redirects
+    absolute_redirect off;
+    port_in_redirect off;
 ${locationBlocks}
   }
 }`;
