@@ -203,11 +203,11 @@ router.post('/',
         await kubernetesService.createNginxProxyDeployment(namespace);
         await kubernetesService.createNginxProxyService(namespace);
 
-        // Add this workspace to the nginx proxy ConfigMap
-        const pathPrefix = `/${namespace}/${k8sName}`;
-        await kubernetesService.addWorkspaceToNginxProxyConfig(namespace, k8sName, pathPrefix);
+        // Add this workspace to the nginx proxy ConfigMap and update HTTPRoute
+        await kubernetesService.addWorkspaceToNginxProxyConfig(namespace, k8sName);
 
-        // Create or update HTTPRoute for Gateway API
+        // Create or update HTTPRoute for Gateway API (rebuilds from all workspaces in namespace)
+        const pathPrefix = `/${namespace}/${k8sName}`;
         await kubernetesService.createOrUpdateHTTPRoute(namespace, pathPrefix);
 
         // Update status to stopped (created but not running)

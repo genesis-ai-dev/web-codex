@@ -239,8 +239,7 @@ class KubernetesService {
   // ConfigMap operations
   async addWorkspaceToNginxProxyConfig(
     namespace: string,
-    workspaceName: string,
-    pathPrefix: string
+    workspaceName: string
   ): Promise<void> {
     try {
       // Get list of all workspaces in this namespace to rebuild config
@@ -325,7 +324,10 @@ ${locationBlocks}
     workspaceName: string
   ): Promise<void> {
     // Simply call addWorkspaceToNginxProxyConfig which will rebuild the config from current services
-    await this.addWorkspaceToNginxProxyConfig(namespace, workspaceName, '');
+    await this.addWorkspaceToNginxProxyConfig(namespace, workspaceName);
+
+    // Also update the HTTPRoute to remove this workspace's path
+    await this.createOrUpdateHTTPRoute(namespace, '');
   }
 
   private async restartDeployment(namespace: string, name: string): Promise<void> {
@@ -1073,12 +1075,65 @@ cert: false`;
     try {
       const httpRouteName = `${namespace}-httproute`;
 
+      // Get list of all workspaces in this namespace to rebuild HTTPRoute rules
+      const services = await this.coreV1Api.listNamespacedService({ namespace });
+
+      // Filter to only workspace services (exclude proxy service)
+      const workspaceServices = services.items.filter(
+        svc => svc.metadata?.name?.startsWith('workspace-') && svc.metadata.name !== 'code-server-proxy-service'
+      );
+
+      // Build rules for all workspaces - each workspace gets its own path prefix rule
+      const rules = workspaceServices.map(svc => {
+        const svcName = svc.metadata?.name || '';
+        const svcPathPrefix = `/${namespace}/${svcName}`;
+        return {
+          matches: [
+            {
+              path: {
+                type: 'PathPrefix',
+                value: svcPathPrefix,
+              },
+            },
+          ],
+          backendRefs: [
+            {
+              name: 'code-server-proxy-service',
+              port: 80,
+            },
+          ],
+        };
+      });
+
+      // If no workspaces, add a default rule to keep the HTTPRoute valid
+      if (rules.length === 0) {
+        rules.push({
+          matches: [
+            {
+              path: {
+                type: 'PathPrefix',
+                value: `/${namespace}/`,
+              },
+            },
+          ],
+          backendRefs: [
+            {
+              name: 'code-server-proxy-service',
+              port: 80,
+            },
+          ],
+        });
+      }
+
       const httpRoute: any = {
         apiVersion: 'gateway.networking.k8s.io/v1',
         kind: 'HTTPRoute',
         metadata: {
           name: httpRouteName,
           namespace,
+          labels: {
+            'app.kubernetes.io/managed-by': 'vscode-platform',
+          },
         },
         spec: {
           hostnames,
@@ -1105,24 +1160,7 @@ cert: false`;
               sectionName: 'https-aws',
             },
           ],
-          rules: [
-            {
-              matches: [
-                {
-                  path: {
-                    type: 'PathPrefix',
-                    value: pathPrefix,
-                  },
-                },
-              ],
-              backendRefs: [
-                {
-                  name: 'code-server-proxy-service',
-                  port: 80,
-                },
-              ],
-            },
-          ],
+          rules,
         },
       };
 
@@ -1148,7 +1186,7 @@ cert: false`;
           name: httpRouteName,
           body: httpRoute,
         });
-        logger.info(`HTTPRoute updated: ${httpRouteName} in namespace ${namespace} for path ${pathPrefix}`);
+        logger.info(`HTTPRoute updated: ${httpRouteName} in namespace ${namespace} with ${rules.length} rule(s)`);
       } catch (error: any) {
         const statusCode = error.statusCode || error.response?.statusCode || error.code;
         if (statusCode === 404) {
@@ -1160,13 +1198,13 @@ cert: false`;
             plural: 'httproutes',
             body: httpRoute,
           });
-          logger.info(`HTTPRoute created: ${httpRouteName} in namespace ${namespace} for path ${pathPrefix}`);
+          logger.info(`HTTPRoute created: ${httpRouteName} in namespace ${namespace} with ${rules.length} rule(s)`);
         } else {
           throw error;
         }
       }
     } catch (error) {
-      throw new KubernetesError(`Failed to create/update HTTPRoute for ${pathPrefix}`, error);
+      throw new KubernetesError(`Failed to create/update HTTPRoute in namespace ${namespace}`, error);
     }
   }
 
