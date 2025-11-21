@@ -1073,7 +1073,7 @@ cert: false`;
     try {
       const httpRouteName = `${namespace}-httproute`;
 
-      const httpRoute = {
+      const httpRoute: any = {
         apiVersion: 'gateway.networking.k8s.io/v1',
         kind: 'HTTPRoute',
         metadata: {
@@ -1128,7 +1128,7 @@ cert: false`;
 
       try {
         // Try to get existing HTTPRoute
-        await this.customObjectsApi.getNamespacedCustomObject({
+        const existingRoute = await this.customObjectsApi.getNamespacedCustomObject({
           group: 'gateway.networking.k8s.io',
           version: 'v1',
           namespace,
@@ -1136,7 +1136,10 @@ cert: false`;
           name: httpRouteName,
         });
 
-        // If exists, replace it
+        // If exists, replace it with the existing resourceVersion
+        const existingRouteBody = existingRoute.body as any;
+        httpRoute.metadata.resourceVersion = existingRouteBody.metadata.resourceVersion;
+
         await this.customObjectsApi.replaceNamespacedCustomObject({
           group: 'gateway.networking.k8s.io',
           version: 'v1',
