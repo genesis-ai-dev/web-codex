@@ -552,16 +552,20 @@ cert: false`;
 
   async scaleDeployment(namespace: string, name: string, replicas: number): Promise<void> {
     try {
-      const patch = {
-        spec: {
-          replicas,
-        },
-      };
+      // Use readNamespacedDeploymentScale to get current scale object
+      const scaleResponse = await this.appsV1Api.readNamespacedDeploymentScale({ name, namespace });
 
-      await this.appsV1Api.patchNamespacedDeploymentScale({
+      // Update the replicas count
+      const scale = scaleResponse;
+      if (scale.spec) {
+        scale.spec.replicas = replicas;
+      }
+
+      // Replace the scale object
+      await this.appsV1Api.replaceNamespacedDeploymentScale({
         namespace,
         name,
-        body: patch,
+        body: scale,
       });
 
       logger.info(`Deployment ${name} scaled to ${replicas} replicas`);
