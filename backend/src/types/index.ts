@@ -83,7 +83,7 @@ export interface Workspace {
   updatedAt: string;
   lastAccessedAt?: string;
   url?: string;
-  connectionToken: string;
+  password: string;
   resources: WorkspaceResources;
   usage?: ResourceUsage;
   image: string;

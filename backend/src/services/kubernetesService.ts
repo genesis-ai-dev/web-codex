@@ -10,6 +10,7 @@ class KubernetesService {
   private appsV1Api: k8s.AppsV1Api;
   private rbacV1Api: k8s.RbacAuthorizationV1Api;
   private networkingV1Api: k8s.NetworkingV1Api;
+  private customObjectsApi: k8s.CustomObjectsApi;
   private metricsClient: k8s.Metrics;
 
   constructor() {
@@ -58,6 +59,9 @@ class KubernetesService {
 
       this.networkingV1Api = this.kc.makeApiClient(k8s.NetworkingV1Api);
       logger.info('NetworkingV1Api client created');
+
+      this.customObjectsApi = this.kc.makeApiClient(k8s.CustomObjectsApi);
+      logger.info('CustomObjectsApi client created');
 
       this.metricsClient = new k8s.Metrics(this.kc);
       logger.info('Metrics client created');
@@ -230,13 +234,193 @@ class KubernetesService {
     }
   }
 
+  // ConfigMap operations
+  async addWorkspaceToNginxProxyConfig(
+    namespace: string,
+    workspaceName: string,
+    pathPrefix: string
+  ): Promise<void> {
+    try {
+      // Get list of all workspaces in this namespace to rebuild config
+      const services = await this.coreV1Api.listNamespacedService({ namespace });
+
+      // Filter to only workspace services (exclude proxy service)
+      const workspaceServices = services.items.filter(
+        svc => svc.metadata?.name?.startsWith('workspace-') && svc.metadata.name !== 'code-server-proxy-service'
+      );
+
+      // Build location blocks for all workspaces
+      const locationBlocks = workspaceServices.map(svc => {
+        const svcName = svc.metadata?.name || '';
+        const svcPathPrefix = `/${namespace}/${svcName}`;
+        return `    location ${svcPathPrefix}/ {
+      proxy_pass http://${svcName}:80/;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_read_timeout 3600s;
+      proxy_send_timeout 3600s;
+      # Rewrite redirects
+      proxy_redirect / ${svcPathPrefix}/;
+    }`;
+      }).join('\n');
+
+      const nginxConfig = `events {}
+http {
+  server {
+    listen 8080;
+${locationBlocks}
+  }
+}`;
+
+      const configMap: k8s.V1ConfigMap = {
+        metadata: {
+          name: 'code-server-nginx-config',
+          namespace,
+          labels: {
+            'app.kubernetes.io/managed-by': 'vscode-platform',
+          },
+        },
+        data: {
+          'nginx.conf': nginxConfig,
+        },
+      };
+
+      try {
+        // Try to get existing ConfigMap
+        await this.coreV1Api.readNamespacedConfigMap({ name: 'code-server-nginx-config', namespace });
+        // If exists, replace it
+        await this.coreV1Api.replaceNamespacedConfigMap({ name: 'code-server-nginx-config', namespace, body: configMap });
+        logger.info(`Nginx proxy ConfigMap updated in namespace ${namespace}`);
+      } catch (error: any) {
+        const statusCode = error.statusCode || error.response?.statusCode || error.code;
+        if (statusCode === 404) {
+          // ConfigMap doesn't exist, create it
+          await this.coreV1Api.createNamespacedConfigMap({ namespace, body: configMap });
+          logger.info(`Nginx proxy ConfigMap created in namespace ${namespace}`);
+        } else {
+          throw error;
+        }
+      }
+
+      // Restart proxy deployment to pick up new config
+      try {
+        await this.restartDeployment(namespace, 'code-server-proxy');
+      } catch (error) {
+        logger.warn(`Failed to restart proxy deployment: ${error}`);
+      }
+    } catch (error) {
+      throw new KubernetesError(`Failed to update nginx proxy ConfigMap in ${namespace}`, error);
+    }
+  }
+
+  async removeWorkspaceFromNginxProxyConfig(
+    namespace: string,
+    workspaceName: string
+  ): Promise<void> {
+    // Simply call addWorkspaceToNginxProxyConfig which will rebuild the config from current services
+    await this.addWorkspaceToNginxProxyConfig(namespace, workspaceName, '');
+  }
+
+  private async restartDeployment(namespace: string, name: string): Promise<void> {
+    try {
+      const deployment = await this.appsV1Api.readNamespacedDeployment({ name, namespace });
+
+      if (!deployment.spec) {
+        throw new Error('Deployment spec is missing');
+      }
+
+      if (!deployment.spec.template) {
+        throw new Error('Deployment template is missing');
+      }
+
+      if (!deployment.spec.template.metadata) {
+        deployment.spec.template.metadata = {};
+      }
+
+      if (!deployment.spec.template.metadata.annotations) {
+        deployment.spec.template.metadata.annotations = {};
+      }
+
+      deployment.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = new Date().toISOString();
+
+      await this.appsV1Api.replaceNamespacedDeployment({ name, namespace, body: deployment });
+      logger.info(`Deployment ${name} restarted in namespace ${namespace}`);
+    } catch (error) {
+      throw new KubernetesError(`Failed to restart deployment ${name}`, error);
+    }
+  }
+
+  async deleteNamespacedConfigMap(name: string, namespace: string): Promise<void> {
+    try {
+      await this.coreV1Api.deleteNamespacedConfigMap({ name, namespace });
+      logger.info(`ConfigMap deleted: ${name} in namespace ${namespace}`);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        logger.warn(`ConfigMap not found for deletion: ${name}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to delete ConfigMap ${name}`, error);
+    }
+  }
+
+  // Secret operations
+  async createCodeServerSecret(
+    namespace: string,
+    name: string,
+    password: string
+  ): Promise<void> {
+    try {
+      const configYaml = `bind-addr: 0.0.0.0:8000
+auth: password
+password: ${password}
+cert: false`;
+
+      const secret: k8s.V1Secret = {
+        metadata: {
+          name: `${name}-config`,
+          namespace,
+          labels: {
+            app: name,
+            'app.kubernetes.io/managed-by': 'vscode-platform',
+          },
+        },
+        type: 'Opaque',
+        stringData: {
+          'config.yaml': configYaml,
+        },
+      };
+
+      await this.coreV1Api.createNamespacedSecret({ namespace, body: secret });
+      logger.info(`Code-server config secret created: ${name}-config in namespace ${namespace}`);
+    } catch (error) {
+      throw new KubernetesError(`Failed to create code-server config secret for ${name}`, error);
+    }
+  }
+
+  async deleteNamespacedSecret(name: string, namespace: string): Promise<void> {
+    try {
+      await this.coreV1Api.deleteNamespacedSecret({ name, namespace });
+      logger.info(`Secret deleted: ${name} in namespace ${namespace}`);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        logger.warn(`Secret not found for deletion: ${name}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to delete secret ${name}`, error);
+    }
+  }
+
   // Deployment operations
   async createDeployment(
     namespace: string,
     name: string,
     image: string,
     resources: any,
-    connectionToken: string,
     labels: Record<string, string> = {}
   ): Promise<void> {
     try {
@@ -279,11 +463,7 @@ class KubernetesService {
                 image,
                 imagePullPolicy: 'IfNotPresent',
                 args: [
-                  '--host=0.0.0.0',
-                  '--port=8000',
-                  `--connection-token=${connectionToken}`,
-                  `--server-base-path=/${namespace}/${name}`,
-                  '--extensions-dir=/home/codex/.codex-server/extensions',
+                  '--bind-addr=0.0.0.0:8000',
                 ],
                 ports: [{
                   containerPort: 8000,
@@ -329,14 +509,26 @@ class KubernetesService {
                 },
                 terminationMessagePath: '/dev/termination-log',
                 terminationMessagePolicy: 'File',
-                // TODO: Re-enable volume mounts once PVC storage is configured
-                // volumeMounts: [{
+                volumeMounts: [{
+                  name: 'config',
+                  mountPath: '/home/coder/.config/code-server',
+                  readOnly: true,
+                }],
+                // TODO: Re-enable workspace storage volume mounts once PVC storage is configured
+                // {
                 //   name: 'workspace-storage',
                 //   mountPath: '/home/coder',
                 // }],
               }],
-              // TODO: Re-enable volumes once PVC storage is configured
-              // volumes: [{
+              volumes: [{
+                name: 'config',
+                secret: {
+                  secretName: `${name}-config`,
+                  defaultMode: 0o644,
+                },
+              }],
+              // TODO: Re-enable workspace storage volumes once PVC storage is configured
+              // {
               //   name: 'workspace-storage',
               //   persistentVolumeClaim: {
               //     claimName: `${name}-pvc`,
@@ -374,6 +566,74 @@ class KubernetesService {
         throw new NotFoundError(`Deployment ${name} not found in namespace ${namespace}`);
       }
       throw new KubernetesError(`Failed to scale deployment ${name}`, error);
+    }
+  }
+
+  async createNginxProxyDeployment(namespace: string): Promise<void> {
+    try {
+      const deployment: k8s.V1Deployment = {
+        metadata: {
+          name: 'code-server-proxy',
+          namespace,
+          labels: {
+            app: 'code-server-proxy',
+            'app.kubernetes.io/managed-by': 'vscode-platform',
+          },
+        },
+        spec: {
+          replicas: 1,
+          selector: {
+            matchLabels: { app: 'code-server-proxy' },
+          },
+          template: {
+            metadata: {
+              labels: { app: 'code-server-proxy' },
+            },
+            spec: {
+              containers: [{
+                name: 'nginx',
+                image: 'nginx:alpine',
+                imagePullPolicy: 'IfNotPresent',
+                ports: [{
+                  containerPort: 8080,
+                  name: 'http',
+                  protocol: 'TCP',
+                }],
+                volumeMounts: [{
+                  name: 'config',
+                  mountPath: '/etc/nginx/nginx.conf',
+                  subPath: 'nginx.conf',
+                }],
+                resources: {
+                  requests: {
+                    cpu: '0.1',
+                    memory: '128Mi',
+                  },
+                  limits: {
+                    cpu: '0.5',
+                    memory: '256Mi',
+                  },
+                },
+              }],
+              volumes: [{
+                name: 'config',
+                configMap: {
+                  name: 'code-server-nginx-config',
+                },
+              }],
+            },
+          },
+        },
+      };
+
+      await this.appsV1Api.createNamespacedDeployment({ namespace, body: deployment });
+      logger.info(`Nginx proxy deployment created in namespace ${namespace}`);
+    } catch (error) {
+      if (error.statusCode === 409) {
+        logger.warn(`Nginx proxy deployment already exists in namespace ${namespace}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to create nginx proxy deployment in ${namespace}`, error);
     }
   }
 
@@ -728,6 +988,40 @@ class KubernetesService {
       throw new KubernetesError(`Failed to create service ${name}`, error);
     }
   }
+
+  async createNginxProxyService(namespace: string): Promise<void> {
+    try {
+      const service: k8s.V1Service = {
+        metadata: {
+          name: 'code-server-proxy-service',
+          namespace,
+          labels: {
+            app: 'code-server-proxy',
+            'app.kubernetes.io/managed-by': 'vscode-platform',
+          },
+        },
+        spec: {
+          selector: { app: 'code-server-proxy' },
+          ports: [{
+            port: 80,
+            targetPort: 8080,
+            protocol: 'TCP',
+            name: 'http',
+          }],
+          type: 'ClusterIP',
+        },
+      };
+
+      await this.coreV1Api.createNamespacedService({ namespace, body: service });
+      logger.info(`Nginx proxy service created in namespace ${namespace}`);
+    } catch (error) {
+      if (error.statusCode === 409) {
+        logger.warn(`Nginx proxy service already exists in namespace ${namespace}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to create nginx proxy service in ${namespace}`, error);
+    }
+  }
   async deleteNamespacedService(name: string, namespace: string): Promise<void> {
     try {
       await this.coreV1Api.deleteNamespacedService({ name, namespace });
@@ -741,173 +1035,128 @@ class KubernetesService {
     }
   }
 
-  // Ingress operations
-  async createOrUpdateIngressRule(
+  // HTTPRoute operations (Gateway API)
+  async createOrUpdateHTTPRoute(
     namespace: string,
-    ingressName: string,
-    workspaceName: string,
-    serviceName: string,
     pathPrefix: string,
-    host: string = 'loadbalancer.frontierrnd.com'
+    hostnames: string[] = ['test.denhertog.ca', 'loadbalancer.frontierrnd.com']
   ): Promise<void> {
     try {
-      // Try to get existing ingress
-      let ingress: k8s.V1Ingress;
-      let isUpdate = false;
+      const httpRouteName = `${namespace}-httproute`;
 
-      try {
-        const response = await this.networkingV1Api.readNamespacedIngress({ name: ingressName, namespace });
-        ingress = response;
-        isUpdate = true;
-      } catch (error: any) {
-        // Check multiple possible locations for the 404 status code
-        const statusCode = error.statusCode || error.response?.statusCode || error.code;
-        if (statusCode !== 404) {
-          throw error;
-        }
-        // Ingress doesn't exist, create new one
-        ingress = {
-          apiVersion: 'networking.k8s.io/v1',
-          kind: 'Ingress',
-          metadata: {
-            name: ingressName,
-            namespace,
-            annotations: {
-              'cert-manager.io/issuer': 'letsencrypt-prod',
+      const httpRoute = {
+        apiVersion: 'gateway.networking.k8s.io/v1',
+        kind: 'HTTPRoute',
+        metadata: {
+          name: httpRouteName,
+          namespace,
+        },
+        spec: {
+          hostnames,
+          parentRefs: [
+            {
+              group: 'gateway.networking.k8s.io',
+              kind: 'Gateway',
+              name: 'main-nginx-gateway',
+              namespace: 'gateway-system',
+              sectionName: 'http',
             },
-          },
-          spec: {
-            ingressClassName: 'nginx',
-            rules: [],
-            tls: [
-              {
-                hosts: [host],
-                secretName: `${namespace}-tls`,
-              },
-            ],
-          },
-        };
-      }
-
-      // Ensure rules array exists
-      if (!ingress.spec) {
-        ingress.spec = { rules: [] };
-      }
-      if (!ingress.spec.rules) {
-        ingress.spec.rules = [];
-      }
-
-      // Find or create rule for the host
-      let rule = ingress.spec.rules.find((r) => r.host === host);
-      if (!rule) {
-        rule = {
-          host,
-          http: {
-            paths: [],
-          },
-        };
-        ingress.spec.rules.push(rule);
-      }
-
-      // Ensure paths array exists
-      if (!rule.http) {
-        rule.http = { paths: [] };
-      }
-      if (!rule.http.paths) {
-        rule.http.paths = [];
-      }
-
-      // Check if path already exists
-      const existingPathIndex = rule.http.paths.findIndex((p) => p.path === pathPrefix);
-
-      const newPath: k8s.V1HTTPIngressPath = {
-        path: pathPrefix,
-        pathType: 'Prefix',
-        backend: {
-          service: {
-            name: serviceName,
-            port: {
-              number: 80,
+            {
+              group: 'gateway.networking.k8s.io',
+              kind: 'Gateway',
+              name: 'main-nginx-gateway',
+              namespace: 'gateway-system',
+              sectionName: 'https',
             },
-          },
+            {
+              group: 'gateway.networking.k8s.io',
+              kind: 'Gateway',
+              name: 'main-nginx-gateway',
+              namespace: 'gateway-system',
+              sectionName: 'https-aws',
+            },
+          ],
+          rules: [
+            {
+              matches: [
+                {
+                  path: {
+                    type: 'PathPrefix',
+                    value: pathPrefix,
+                  },
+                },
+              ],
+              backendRefs: [
+                {
+                  name: 'code-server-proxy-service',
+                  port: 80,
+                },
+              ],
+            },
+          ],
         },
       };
 
-      if (existingPathIndex >= 0) {
-        // Update existing path
-        rule.http.paths[existingPathIndex] = newPath;
-      } else {
-        // Add new path
-        rule.http.paths.push(newPath);
-      }
+      try {
+        // Try to get existing HTTPRoute
+        await this.customObjectsApi.getNamespacedCustomObject({
+          group: 'gateway.networking.k8s.io',
+          version: 'v1',
+          namespace,
+          plural: 'httproutes',
+          name: httpRouteName,
+        });
 
-      // Create or update the ingress
-      if (isUpdate) {
-        await this.networkingV1Api.replaceNamespacedIngress({ name: ingressName, namespace, body: ingress });
-        logger.info(`Ingress rule updated: ${ingressName} for workspace ${workspaceName} at path ${pathPrefix}`);
-      } else {
-        await this.networkingV1Api.createNamespacedIngress({ namespace, body: ingress });
-        logger.info(`Ingress created: ${ingressName} for workspace ${workspaceName} at path ${pathPrefix}`);
+        // If exists, replace it
+        await this.customObjectsApi.replaceNamespacedCustomObject({
+          group: 'gateway.networking.k8s.io',
+          version: 'v1',
+          namespace,
+          plural: 'httproutes',
+          name: httpRouteName,
+          body: httpRoute,
+        });
+        logger.info(`HTTPRoute updated: ${httpRouteName} in namespace ${namespace} for path ${pathPrefix}`);
+      } catch (error: any) {
+        const statusCode = error.statusCode || error.response?.statusCode || error.code;
+        if (statusCode === 404) {
+          // HTTPRoute doesn't exist, create it
+          await this.customObjectsApi.createNamespacedCustomObject({
+            group: 'gateway.networking.k8s.io',
+            version: 'v1',
+            namespace,
+            plural: 'httproutes',
+            body: httpRoute,
+          });
+          logger.info(`HTTPRoute created: ${httpRouteName} in namespace ${namespace} for path ${pathPrefix}`);
+        } else {
+          throw error;
+        }
       }
     } catch (error) {
-      throw new KubernetesError(`Failed to create/update ingress rule for ${workspaceName}`, error);
+      throw new KubernetesError(`Failed to create/update HTTPRoute for ${pathPrefix}`, error);
     }
   }
 
-  async deleteIngressRule(
-    namespace: string,
-    ingressName: string,
-    pathPrefix: string,
-    host: string = 'loadbalancer.frontierrnd.com'
-  ): Promise<void> {
+  async deleteHTTPRoute(namespace: string): Promise<void> {
     try {
-      // Get existing ingress
-      const response = await this.networkingV1Api.readNamespacedIngress({ name: ingressName, namespace });
-      const ingress = response;
+      const httpRouteName = `${namespace}-httproute`;
 
-      if (!ingress.spec?.rules) {
-        logger.warn(`No rules found in ingress ${ingressName}`);
-        return;
-      }
-
-      // Find the rule for the host
-      const rule = ingress.spec.rules.find((r) => r.host === host);
-      if (!rule?.http?.paths) {
-        logger.warn(`No paths found for host ${host} in ingress ${ingressName}`);
-        return;
-      }
-
-      // Remove the path
-      const originalLength = rule.http.paths.length;
-      rule.http.paths = rule.http.paths.filter((p) => p.path !== pathPrefix);
-
-      if (rule.http.paths.length === originalLength) {
-        logger.warn(`Path ${pathPrefix} not found in ingress ${ingressName}`);
-        return;
-      }
-
-      // If no paths left in this rule, remove the rule
-      if (rule.http.paths.length === 0) {
-        ingress.spec.rules = ingress.spec.rules.filter((r) => r.host !== host);
-      }
-
-      // If no rules left, delete the entire ingress
-      if (ingress.spec.rules.length === 0) {
-        await this.networkingV1Api.deleteNamespacedIngress({ name: ingressName, namespace });
-        logger.info(`Ingress deleted: ${ingressName} (no rules remaining)`);
-      } else {
-        // Update the ingress with the path removed
-        await this.networkingV1Api.replaceNamespacedIngress({ name: ingressName, namespace, body: ingress });
-        logger.info(`Ingress rule removed: path ${pathPrefix} from ${ingressName}`);
-      }
+      await this.customObjectsApi.deleteNamespacedCustomObject({
+        group: 'gateway.networking.k8s.io',
+        version: 'v1',
+        namespace,
+        plural: 'httproutes',
+        name: httpRouteName,
+      });
+      logger.info(`HTTPRoute deleted: ${httpRouteName} in namespace ${namespace}`);
     } catch (error: any) {
-      // Check multiple possible locations for the 404 status code
       const statusCode = error.statusCode || error.response?.statusCode || error.code;
       if (statusCode === 404) {
-        logger.warn(`Ingress not found for deletion: ${ingressName}`);
+        logger.warn(`HTTPRoute not found for deletion in namespace ${namespace}`);
         return;
       }
-      throw new KubernetesError(`Failed to delete ingress rule at path ${pathPrefix}`, error);
+      throw new KubernetesError(`Failed to delete HTTPRoute in ${namespace}`, error);
     }
   }
 

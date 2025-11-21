@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { randomBytes } from 'crypto';
 import { authenticate, requireGroupMembership } from '../middleware/auth';
 import { validate, validateQuery, validateParams, commonSchemas } from '../middleware/validation';
 import { workspaceRateLimit, operationRateLimits } from '../middleware/rateLimiting';
@@ -10,6 +11,11 @@ import { logger } from '../config/logger';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors';
 
 const router = Router();
+
+// Helper function to generate a secure random password
+function generatePassword(length: number = 24): string {
+  return randomBytes(length).toString('hex').substring(0, length);
+}
 
 // All workspace routes require authentication
 router.use(authenticate);
@@ -142,8 +148,8 @@ router.post('/',
       const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
       const namespace = group.namespace;
 
-      // Generate unique connection token for VSCode authentication
-      const connectionToken = uuidv4();
+      // Generate secure password for code-server authentication
+      const password = generatePassword(24);
 
       // Default resources if not provided
       const resources = createRequest.resources || {
@@ -161,30 +167,33 @@ router.post('/',
         groupName: group.displayName,
         userId: user.id,
         status: WorkspaceStatus.PENDING,
-        url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}/?tkn=${connectionToken}`,
-        connectionToken,
+        url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}`,
+        password,
         resources,
-        image: createRequest.image || 'ghcr.io/genesis-ai-dev/codex:master',
+        image: createRequest.image || 'ghcr.io/andrewhertog/code-server:0.0.1-alpha',
         replicas: 0, // Start stopped
       });
-      
+
       // Create Kubernetes resources
       try {
+        // Create secret with code-server config
+        await kubernetesService.createCodeServerSecret(namespace, k8sName, password);
+
         // TODO: Re-enable PVC creation once storage is configured
         // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
-        await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources, connectionToken);
+        await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
         await kubernetesService.createService(namespace, k8sName);
 
-        // Create or update Ingress rule for this workspace
-        const ingressName = `${namespace}-ingress`;
+        // Create nginx proxy infrastructure (Deployment, Service) - only once per namespace
+        await kubernetesService.createNginxProxyDeployment(namespace);
+        await kubernetesService.createNginxProxyService(namespace);
+
+        // Add this workspace to the nginx proxy ConfigMap
         const pathPrefix = `/${namespace}/${k8sName}`;
-        await kubernetesService.createOrUpdateIngressRule(
-          namespace,
-          ingressName,
-          k8sName,
-          k8sName,
-          pathPrefix
-        );
+        await kubernetesService.addWorkspaceToNginxProxyConfig(namespace, k8sName, pathPrefix);
+
+        // Create or update HTTPRoute for Gateway API
+        await kubernetesService.createOrUpdateHTTPRoute(namespace, pathPrefix);
 
         // Update status to stopped (created but not running)
         const updatedWorkspace = await dynamodbService.updateWorkspace(workspaceId, {
@@ -199,10 +208,11 @@ router.post('/',
         try {
           await kubernetesService.deleteDeployment(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
-          // Ingress cleanup handled in deleteIngressRule (handles 404 gracefully)
-          const ingressName = `${namespace}-ingress`;
-          const pathPrefix = `/${namespace}/${k8sName}`;
-          await kubernetesService.deleteIngressRule(namespace, ingressName, pathPrefix);
+          await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
+          await kubernetesService.deleteNamespacedConfigMap('code-server-nginx-config', namespace);
+          await kubernetesService.deleteDeployment(namespace, 'code-server-proxy');
+          await kubernetesService.deleteNamespacedService('code-server-proxy-service', namespace);
+          await kubernetesService.deleteHTTPRoute(namespace);
         } catch (cleanupError) {
           logger.warn(`Failed to clean up K8s resources during rollback for ${workspaceId}:`, cleanupError);
         }
@@ -324,13 +334,15 @@ router.delete('/:workspaceId',
         try {
           await kubernetesService.deleteDeployment(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
+          await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
           // TODO: Re-enable PVC deletion once storage is configured
           // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
 
-          // Delete Ingress rule for this workspace
-          const ingressName = `${namespace}-ingress`;
-          const pathPrefix = `/${namespace}/${k8sName}`;
-          await kubernetesService.deleteIngressRule(namespace, ingressName, pathPrefix);
+          // Remove this workspace from the nginx proxy ConfigMap
+          await kubernetesService.removeWorkspaceFromNginxProxyConfig(namespace, k8sName);
+
+          // Note: We don't delete the shared nginx proxy resources (Deployment, Service, HTTPRoute)
+          // as they are shared across all workspaces in the namespace.
 
           logger.info(`Kubernetes resources deleted for workspace ${workspaceId} in namespace ${namespace}`);
         } catch (k8sError) {
