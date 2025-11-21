@@ -94,8 +94,9 @@ class KubernetesService {
 
       // Wait for namespace to be fully ready
       await this.waitForNamespace(name, 30000); // 30 second timeout
-    } catch (error) {
-      if (error.statusCode === 409) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 409) {
         logger.warn(`Namespace already exists: ${name}`);
         return;
       }
@@ -136,8 +137,9 @@ class KubernetesService {
     try {
       await this.coreV1Api.deleteNamespace({ name });
       logger.info(`Namespace deleted: ${name}`);
-    } catch (error) {
-      if (error.statusCode === 404) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
         logger.warn(`Namespace not found for deletion: ${name}`);
         return;
       }
@@ -359,8 +361,9 @@ ${locationBlocks}
     try {
       await this.coreV1Api.deleteNamespacedConfigMap({ name, namespace });
       logger.info(`ConfigMap deleted: ${name} in namespace ${namespace}`);
-    } catch (error) {
-      if (error.statusCode === 404) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
         logger.warn(`ConfigMap not found for deletion: ${name}`);
         return;
       }
@@ -406,8 +409,9 @@ cert: false`;
     try {
       await this.coreV1Api.deleteNamespacedSecret({ name, namespace });
       logger.info(`Secret deleted: ${name} in namespace ${namespace}`);
-    } catch (error) {
-      if (error.statusCode === 404) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
         logger.warn(`Secret not found for deletion: ${name}`);
         return;
       }
@@ -628,8 +632,9 @@ cert: false`;
 
       await this.appsV1Api.createNamespacedDeployment({ namespace, body: deployment });
       logger.info(`Nginx proxy deployment created in namespace ${namespace}`);
-    } catch (error) {
-      if (error.statusCode === 409) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 409) {
         logger.warn(`Nginx proxy deployment already exists in namespace ${namespace}`);
         return;
       }
@@ -641,8 +646,9 @@ cert: false`;
     try {
       await this.appsV1Api.deleteNamespacedDeployment({ name, namespace });
       logger.info(`Deployment deleted: ${name} in namespace ${namespace}`);
-    } catch (error) {
-      if (error.statusCode === 404) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
         logger.warn(`Deployment not found for deletion: ${name}`);
         return;
       }
@@ -1014,8 +1020,9 @@ cert: false`;
 
       await this.coreV1Api.createNamespacedService({ namespace, body: service });
       logger.info(`Nginx proxy service created in namespace ${namespace}`);
-    } catch (error) {
-      if (error.statusCode === 409) {
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 409) {
         logger.warn(`Nginx proxy service already exists in namespace ${namespace}`);
         return;
       }
