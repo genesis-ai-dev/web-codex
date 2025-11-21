@@ -176,6 +176,21 @@ router.post('/',
 
       // Create Kubernetes resources
       try {
+        // Ensure namespace exists (create if it doesn't)
+        const namespaceExists = await kubernetesService.namespaceExists(namespace);
+        if (!namespaceExists) {
+          logger.warn(`Namespace ${namespace} does not exist for group ${createRequest.groupId}, creating it now`);
+          await kubernetesService.createNamespace(namespace, {
+            'vscode-platform/group-id': createRequest.groupId,
+            'vscode-platform/group-name': group.name,
+          });
+
+          // Create resource quota for the namespace
+          if (group.resourceQuota) {
+            await kubernetesService.createResourceQuota(namespace, group.resourceQuota);
+          }
+        }
+
         // Create secret with code-server config
         await kubernetesService.createCodeServerSecret(namespace, k8sName, password);
 
