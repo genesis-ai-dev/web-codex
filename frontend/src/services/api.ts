@@ -164,6 +164,11 @@ class ApiService {
     return response.data;
   }
 
+  async syncWorkspaceFromKubernetes(workspaceId: string): Promise<Workspace> {
+    const response = await this.client.post(`/workspaces/${workspaceId}/sync`);
+    return response.data;
+  }
+
   async getWorkspaceMetrics(workspaceId: string): Promise<ResourceUsage> {
     const response = await this.client.get(`/workspaces/${workspaceId}/metrics`);
     return response.data;

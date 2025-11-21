@@ -137,7 +137,7 @@ export const commonSchemas = {
       .required(),
     description: Joi.string().max(500).allow('', null).optional(),
     groupId: Joi.string().required(),
-    image: Joi.string().default('codercom/code-server:latest'),
+    image: Joi.string().default('ghcr.io/andrewhertog/code-server:0.0.1-alpha.2'),
     resources: Joi.object({
       cpu: Joi.string().required(),
       memory: Joi.string().required(),

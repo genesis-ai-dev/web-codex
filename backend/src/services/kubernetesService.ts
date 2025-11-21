@@ -685,6 +685,24 @@ cert: false`;
     }
   }
 
+  async getDeploymentDetails(namespace: string, name: string): Promise<{ image: string; replicas: number } | null> {
+    try {
+      const response = await this.appsV1Api.readNamespacedDeployment({ name, namespace });
+      const deployment = response;
+
+      const containers = deployment.spec?.template?.spec?.containers || [];
+      const image = containers[0]?.image || '';
+      const replicas = deployment.spec?.replicas || 0;
+
+      return { image, replicas };
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return null;
+      }
+      throw new KubernetesError(`Failed to get deployment details for ${name}`, error);
+    }
+  }
+
   async getWorkspaceComponentHealth(namespace: string, name: string): Promise<ComponentHealthStatus[]> {
     const components: ComponentHealthStatus[] = [];
 

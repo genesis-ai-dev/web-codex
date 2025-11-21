@@ -170,7 +170,7 @@ router.post('/',
         url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}`,
         password,
         resources,
-        image: createRequest.image || 'ghcr.io/andrewhertog/code-server:0.0.1-alpha',
+        image: createRequest.image || 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
         replicas: 0, // Start stopped
       });
 
@@ -463,6 +463,58 @@ router.post('/:workspaceId/actions',
       res.json(updatedWorkspace);
     } catch (error) {
       logger.error('Failed to perform workspace action:', error);
+      throw error;
+    }
+  }
+);
+
+// Sync workspace from Kubernetes
+router.post('/:workspaceId/sync',
+  validateParams(commonSchemas.workspaceId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const user = req.user!;
+      const { workspaceId } = req.params;
+
+      const workspace = await dynamodbService.getWorkspace(workspaceId);
+      if (!workspace) {
+        throw new NotFoundError('Workspace not found');
+      }
+
+      // Verify user has access
+      if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
+        throw new NotFoundError('Workspace not found');
+      }
+
+      const namespace = await getWorkspaceNamespace(workspace);
+      if (!namespace) {
+        throw new NotFoundError('Workspace namespace not found');
+      }
+
+      const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
+
+      // Get current state from Kubernetes
+      const k8sStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
+      const k8sDetails = await kubernetesService.getDeploymentDetails(namespace, k8sName);
+      const metrics = await kubernetesService.getNamespaceMetrics(namespace);
+
+      // Update workspace with K8s state
+      const updates: Partial<Workspace> = {
+        status: k8sStatus,
+        usage: metrics,
+      };
+
+      if (k8sDetails) {
+        updates.image = k8sDetails.image;
+        updates.replicas = k8sDetails.replicas;
+      }
+
+      const updatedWorkspace = await dynamodbService.updateWorkspace(workspaceId, updates);
+
+      logger.info(`Workspace synced from K8s: ${workspaceId} by user ${user.id}`);
+      res.json(updatedWorkspace);
+    } catch (error) {
+      logger.error('Failed to sync workspace from K8s:', error);
       throw error;
     }
   }

@@ -65,6 +65,24 @@ export const WorkspaceDetailsPage: React.FC = () => {
     }
   };
 
+  const handleSyncFromKubernetes = async () => {
+    if (!workspaceId) return;
+
+    setRefreshing(true);
+    try {
+      const syncedWorkspace = await apiService.syncWorkspaceFromKubernetes(workspaceId);
+      setWorkspace(syncedWorkspace);
+      // Also refresh health data
+      const healthData = await apiService.getWorkspaceComponentHealth(workspaceId);
+      setComponentHealth(healthData);
+    } catch (error) {
+      console.error('Failed to sync workspace from Kubernetes:', error);
+      setError(getErrorMessage(error));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleWorkspaceAction = async (action: 'start' | 'stop' | 'restart') => {
     if (!workspaceId) return;
 
@@ -154,8 +172,21 @@ export const WorkspaceDetailsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={handleSyncFromKubernetes}
+                isLoading={refreshing}
+                title="Sync from Kubernetes"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span className="ml-2 text-sm">Sync</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleRefresh}
                 isLoading={refreshing}
+                title="Refresh"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
