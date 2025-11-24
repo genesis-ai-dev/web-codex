@@ -240,6 +240,18 @@ class ApiService {
     await this.client.delete(`/admin/workspaces/${workspaceId}`);
   }
 
+  // Admin: Get system settings
+  async getSystemSettings(): Promise<any> {
+    const response = await this.client.get('/admin/settings');
+    return response.data;
+  }
+
+  // Admin: Update system settings
+  async updateSystemSettings(settings: any): Promise<any> {
+    const response = await this.client.patch('/admin/settings', settings);
+    return response.data;
+  }
+
   // Health check
   async getHealth(): Promise<{ status: string; timestamp: string }> {
     const response = await this.client.get('/health');

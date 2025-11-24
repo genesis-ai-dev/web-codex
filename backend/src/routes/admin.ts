@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { validate, validateQuery, validateParams, commonSchemas } from '../middleware/validation';
 import { adminRateLimit } from '../middleware/rateLimiting';
-import { AuthenticatedRequest, User, PaginatedResponse, AuditLog } from '../types';
+import { AuthenticatedRequest, User, PaginatedResponse, AuditLog, SystemSettings, UpdateSystemSettingsRequest } from '../types';
 import { dynamodbService } from '../services/dynamodbService';
 import { kubernetesService } from '../services/kubernetesService';
 import { userService } from '../services/userService';
@@ -562,6 +562,65 @@ router.delete('/workspaces/:workspaceId',
       });
 
       logger.error('Failed to delete workspace:', error);
+      throw error;
+    }
+  }
+);
+
+// Get system settings
+router.get('/settings',
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const settings = await dynamodbService.getSystemSettings();
+      res.json(settings);
+    } catch (error) {
+      logger.error('Failed to get system settings:', error);
+      throw error;
+    }
+  }
+);
+
+// Update system settings
+router.patch('/settings',
+  validate(commonSchemas.updateSystemSettings),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const updates: UpdateSystemSettingsRequest = req.body;
+
+      const oldSettings = await dynamodbService.getSystemSettings();
+      const updatedSettings = await dynamodbService.updateSystemSettings(
+        updates,
+        req.user!.id
+      );
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'update_system_settings',
+        resource: 'settings:system',
+        details: {
+          oldSettings,
+          newSettings: updates,
+        },
+        success: true,
+      });
+
+      logger.info(`System settings updated by admin ${req.user!.id}`, updates);
+      res.json(updatedSettings);
+    } catch (error) {
+      // Log failed admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'update_system_settings',
+        resource: 'settings:system',
+        details: { error: error.message },
+        success: false,
+        error: error.message,
+      });
+
+      logger.error('Failed to update system settings:', error);
       throw error;
     }
   }

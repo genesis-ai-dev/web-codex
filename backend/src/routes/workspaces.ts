@@ -158,6 +158,18 @@ router.post('/',
         storage: '20Gi',
       };
 
+      // Get default workspace image from system settings if not provided
+      let workspaceImage = createRequest.image;
+      if (!workspaceImage) {
+        try {
+          const settings = await dynamodbService.getSystemSettings();
+          workspaceImage = settings.defaultWorkspaceImage;
+        } catch (error) {
+          logger.warn('Failed to get system settings, using fallback default image:', error);
+          workspaceImage = 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2';
+        }
+      }
+
       // Create workspace in database
       const workspace = await dynamodbService.createWorkspace({
         id: workspaceId,
@@ -170,7 +182,7 @@ router.post('/',
         url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}`,
         password,
         resources,
-        image: createRequest.image || 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
+        image: workspaceImage,
         replicas: 0, // Start stopped
       });
 

@@ -401,35 +401,193 @@ const AuditLogsPlaceholder: React.FC = () => {
 };
 
 const SettingsPlaceholder: React.FC = () => {
+  const [settings, setSettings] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [editedImage, setEditedImage] = React.useState('');
+
+  React.useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await require('../services/api').apiService.getSystemSettings();
+      setSettings(data);
+      setEditedImage(data.defaultWorkspaceImage);
+    } catch (err: any) {
+      console.error('Failed to load system settings:', err);
+      setError(err?.message || 'Failed to load system settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const updates = {
+        defaultWorkspaceImage: editedImage,
+      };
+
+      const updatedSettings = await require('../services/api').apiService.updateSystemSettings(updates);
+      setSettings(updatedSettings);
+      setSuccessMessage('Settings saved successfully');
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to save settings:', err);
+      setError(err?.message || 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (settings) {
+      setEditedImage(settings.defaultWorkspaceImage);
+      setError(null);
+      setSuccessMessage(null);
+    }
+  };
+
+  const hasChanges = settings && editedImage !== settings.defaultWorkspaceImage;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+          <p className="text-gray-500 dark:text-gray-400">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Card className="max-w-2xl">
-      <CardContent className="text-center py-12">
-        <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-          System Settings
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Configure platform-wide settings, default resource limits, and authentication providers.
+    <div className="max-w-4xl">
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">System Settings</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Configure platform-wide settings and defaults
         </p>
-        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-          <p className="font-medium">Planned features:</p>
-          <ul className="text-left max-w-md mx-auto space-y-1">
-            <li>• Default resource quotas for new groups</li>
-            <li>• OAuth provider configuration (Cognito, Google, etc.)</li>
-            <li>• Platform branding and customization</li>
-            <li>• Email notification settings</li>
-            <li>• Security policies and session timeouts</li>
-            <li>• API rate limiting configuration</li>
-            <li>• Kubernetes cluster connection settings</li>
-          </ul>
+      </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 rounded-md bg-green-50 dark:bg-green-900/20 p-4">
+          <div className="flex">
+            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200">{successMessage}</p>
+            </div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+          <div className="flex">
+            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace Settings Section */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Workspace Defaults
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="defaultWorkspaceImage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Default Workspace Image
+              </label>
+              <input
+                type="text"
+                id="defaultWorkspaceImage"
+                value={editedImage}
+                onChange={(e) => setEditedImage(e.target.value)}
+                placeholder="e.g., ghcr.io/andrewhertog/code-server:0.0.1-alpha.2"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm"
+              />
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                The default container image used when creating new workspaces. This should be a valid container image reference.
+              </p>
+              {settings && (
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Last updated: {new Date(settings.updatedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={handleReset}
+              disabled={!hasChanges || isSaving}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleSaveSettings}
+              disabled={!hasChanges || isSaving}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
+            >
+              {isSaving ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Future Settings Section */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Additional Settings
+          </h3>
+          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+            <p className="font-medium">Coming soon:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Default resource quotas for new groups</li>
+              <li>OAuth provider configuration</li>
+              <li>Platform branding and customization</li>
+              <li>Email notification settings</li>
+              <li>Security policies and session timeouts</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

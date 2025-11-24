@@ -153,3 +153,10 @@ export interface ComponentHealthStatus {
   reason: string;
   details: any;
 }
+
+export interface SystemSettings {
+  id: string;
+  defaultWorkspaceImage: string;
+  updatedAt: string;
+  updatedBy: string;
+}

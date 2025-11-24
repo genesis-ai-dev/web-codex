@@ -2,7 +2,7 @@ import AWS from 'aws-sdk';
 import { config } from '../config';
 import { logger } from '../config/logger';
 import { DatabaseError, NotFoundError } from '../utils/errors';
-import { User, Group, Workspace, AuditLog, DynamoDBItem } from '../types';
+import { User, Group, Workspace, AuditLog, DynamoDBItem, SystemSettings } from '../types';
 
 class DynamoDBService {
   private dynamodb: AWS.DynamoDB.DocumentClient;
@@ -493,6 +493,77 @@ class DynamoDBService {
       return { logs, nextToken: responseNextToken };
     } catch (error) {
       throw new DatabaseError('Failed to get audit logs', error);
+    }
+  }
+
+  // System settings operations
+  async getSystemSettings(): Promise<SystemSettings> {
+    try {
+      const result = await this.dynamodb.get({
+        TableName: this.tableName,
+        Key: { PK: 'SETTINGS#system', SK: 'SETTINGS#system' },
+      }).promise();
+
+      if (!result.Item || Object.keys(result.Item).length === 0) {
+        // Return default settings if none exist
+        const defaultSettings: SystemSettings = {
+          id: 'system',
+          defaultWorkspaceImage: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'system',
+        };
+
+        // Save default settings
+        await this.updateSystemSettings(defaultSettings, 'system');
+
+        return defaultSettings;
+      }
+
+      return result.Item as SystemSettings;
+    } catch (error) {
+      throw new DatabaseError('Failed to get system settings', error);
+    }
+  }
+
+  async updateSystemSettings(
+    updates: Partial<SystemSettings>,
+    updatedBy: string
+  ): Promise<SystemSettings> {
+    try {
+      // Get current settings first to merge with updates
+      let currentSettings: SystemSettings;
+      try {
+        currentSettings = await this.getSystemSettings();
+      } catch (error) {
+        // If no settings exist, create defaults
+        currentSettings = {
+          id: 'system',
+          defaultWorkspaceImage: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'system',
+        };
+      }
+
+      const item: any = {
+        PK: 'SETTINGS#system',
+        SK: 'SETTINGS#system',
+        EntityType: 'SETTINGS',
+        ...currentSettings,
+        ...updates,
+        id: 'system',
+        updatedAt: new Date().toISOString(),
+        updatedBy,
+      };
+
+      await this.dynamodb.put({
+        TableName: this.tableName,
+        Item: item,
+      }).promise();
+
+      logger.info('System settings updated', { updatedBy, updates });
+      return item as SystemSettings;
+    } catch (error) {
+      throw new DatabaseError('Failed to update system settings', error);
     }
   }
 

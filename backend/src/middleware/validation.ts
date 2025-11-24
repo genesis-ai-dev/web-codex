@@ -137,7 +137,14 @@ export const commonSchemas = {
       .required(),
     description: Joi.string().max(500).allow('', null).optional(),
     groupId: Joi.string().required(),
-    image: Joi.string().default('ghcr.io/andrewhertog/code-server:0.0.1-alpha.2'),
+    image: Joi.string()
+      .regex(/^[a-z0-9\-\.\/\:]+$/i)
+      .min(1)
+      .max(255)
+      .optional()
+      .messages({
+        'string.pattern.base': 'Image must be a valid container image reference (e.g., registry.io/org/image:tag)',
+      }),
     resources: Joi.object({
       cpu: Joi.string().required(),
       memory: Joi.string().required(),
@@ -206,4 +213,16 @@ export const commonSchemas = {
     lines: Joi.number().integer().min(1).max(1000).default(100),
     since: Joi.string().isoDate().optional(),
   }),
+
+  // System settings validation
+  updateSystemSettings: Joi.object({
+    defaultWorkspaceImage: Joi.string()
+      .regex(/^[a-z0-9\-\.\/\:]+$/i)
+      .min(1)
+      .max(255)
+      .optional()
+      .messages({
+        'string.pattern.base': 'Image must be a valid container image reference (e.g., registry.io/org/image:tag)',
+      }),
+  }).min(1),
 };

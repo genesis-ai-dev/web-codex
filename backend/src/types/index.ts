@@ -138,6 +138,17 @@ export interface AuditLog {
   error?: string;
 }
 
+export interface SystemSettings {
+  id: string;
+  defaultWorkspaceImage: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface UpdateSystemSettingsRequest {
+  defaultWorkspaceImage?: string;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   nextToken?: string;
