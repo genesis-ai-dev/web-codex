@@ -505,7 +505,7 @@ class DynamoDBService {
       }).promise();
 
       if (!result.Item || Object.keys(result.Item).length === 0) {
-        // Return default settings if none exist
+        // Create and save default settings if none exist
         const defaultSettings: SystemSettings = {
           id: 'system',
           defaultWorkspaceImage: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
@@ -513,9 +513,20 @@ class DynamoDBService {
           updatedBy: 'system',
         };
 
-        // Save default settings
-        await this.updateSystemSettings(defaultSettings, 'system');
+        const item: any = {
+          PK: 'SETTINGS#system',
+          SK: 'SETTINGS#system',
+          EntityType: 'SETTINGS',
+          ...defaultSettings,
+        };
 
+        // Save default settings directly without calling updateSystemSettings to avoid circular dependency
+        await this.dynamodb.put({
+          TableName: this.tableName,
+          Item: item,
+        }).promise();
+
+        logger.info('Default system settings created');
         return defaultSettings;
       }
 
@@ -531,10 +542,13 @@ class DynamoDBService {
   ): Promise<SystemSettings> {
     try {
       // Get current settings first to merge with updates
+      const result = await this.dynamodb.get({
+        TableName: this.tableName,
+        Key: { PK: 'SETTINGS#system', SK: 'SETTINGS#system' },
+      }).promise();
+
       let currentSettings: SystemSettings;
-      try {
-        currentSettings = await this.getSystemSettings();
-      } catch (error) {
+      if (!result.Item || Object.keys(result.Item).length === 0) {
         // If no settings exist, create defaults
         currentSettings = {
           id: 'system',
@@ -542,6 +556,8 @@ class DynamoDBService {
           updatedAt: new Date().toISOString(),
           updatedBy: 'system',
         };
+      } else {
+        currentSettings = result.Item as SystemSettings;
       }
 
       const item: any = {
