@@ -1019,9 +1019,34 @@ cert: false`;
 
       await this.coreV1Api.createNamespacedService({ namespace, body: service });
       logger.info(`Service created: ${name} in namespace ${namespace}`);
+
+      // Wait for service to be available in the API before proceeding
+      await this.waitForService(namespace, name, 10000); // 10 second timeout
     } catch (error) {
       throw new KubernetesError(`Failed to create service ${name}`, error);
     }
+  }
+
+  private async waitForService(namespace: string, name: string, timeoutMs: number = 10000): Promise<void> {
+    const startTime = Date.now();
+    const pollInterval = 500; // Check every 500ms
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        // Try to get the service
+        const service = await this.coreV1Api.readNamespacedService({ name, namespace });
+        if (service && service.spec?.clusterIP) {
+          logger.info(`Service ${name} is available in namespace ${namespace}`);
+          return;
+        }
+      } catch (error) {
+        // Service not ready yet, continue polling
+      }
+
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    logger.warn(`Timeout waiting for service ${name} to become available in namespace ${namespace}, proceeding anyway`);
   }
 
   async createNginxProxyService(namespace: string): Promise<void> {
