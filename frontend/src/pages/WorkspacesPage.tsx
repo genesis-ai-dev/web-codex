@@ -385,7 +385,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
     name: '',
     description: '',
     groupId: '',
-    image: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
+    // Don't specify image - let backend use system settings default
     resources: {
       cpu: '2',
       memory: '4Gi',
