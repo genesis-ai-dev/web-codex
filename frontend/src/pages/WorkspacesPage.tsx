@@ -192,6 +192,7 @@ interface WorkspaceCardProps {
 
 const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNavigate, onExec }) => {
   const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
+  const [urlCopied, setUrlCopied] = useState(false);
 
   const handleAction = async (action: 'start' | 'stop' | 'restart' | 'delete') => {
     if (action === 'delete') {
@@ -200,7 +201,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
         return;
       }
     }
-    
+
     setIsActionLoading(action);
     try {
       await onAction(workspace.id, action);
@@ -212,6 +213,14 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
   const openWorkspace = () => {
     if (workspace.url && workspace.status === 'running') {
       window.open(workspace.url, '_blank');
+    }
+  };
+
+  const copyUrl = () => {
+    if (workspace.url) {
+      navigator.clipboard.writeText(workspace.url);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
     }
   };
 
@@ -287,6 +296,23 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
                   className="flex-1"
                 >
                   Open VSCode
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={copyUrl}
+                  title="Copy workspace URL"
+                  disabled={!workspace.url}
+                >
+                  {urlCopied ? (
+                    <svg className="w-4 h-4 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  )}
                 </Button>
                 <Button
                   size="sm"

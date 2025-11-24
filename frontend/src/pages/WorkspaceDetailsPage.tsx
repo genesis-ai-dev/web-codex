@@ -18,12 +18,21 @@ export const WorkspaceDetailsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordCopied, setPasswordCopied] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
 
   const handleCopyPassword = () => {
     if (workspace?.password) {
       navigator.clipboard.writeText(workspace.password);
       setPasswordCopied(true);
       setTimeout(() => setPasswordCopied(false), 2000);
+    }
+  };
+
+  const handleCopyUrl = () => {
+    if (workspace?.url) {
+      navigator.clipboard.writeText(workspace.url);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
     }
   };
 
@@ -204,6 +213,28 @@ export const WorkspaceDetailsPage: React.FC = () => {
                   disabled={!workspace.url}
                 >
                   Open VSCode
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={handleCopyUrl}
+                  disabled={!workspace.url}
+                  title="Copy workspace URL"
+                >
+                  {urlCopied ? (
+                    <>
+                      <svg className="w-4 h-4 text-success-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy URL
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="secondary"
