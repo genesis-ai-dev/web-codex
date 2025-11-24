@@ -522,7 +522,7 @@ cert: false`;
                 terminationMessagePolicy: 'File',
                 volumeMounts: [{
                   name: 'config',
-                  mountPath: '/home/coder/.config/code-server',
+                  mountPath: '/home/coder/.config/codex',
                   readOnly: true,
                 }],
                 // TODO: Re-enable workspace storage volume mounts once PVC storage is configured
