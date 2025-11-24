@@ -416,12 +416,15 @@ const SettingsPlaceholder: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('Loading system settings...');
       const data = await require('../services/api').apiService.getSystemSettings();
+      console.log('System settings loaded:', data);
       setSettings(data);
       setEditedImage(data.defaultWorkspaceImage);
     } catch (err: any) {
       console.error('Failed to load system settings:', err);
-      setError(err?.message || 'Failed to load system settings');
+      const errorMessage = err?.message || err?.response?.data?.message || 'Failed to load system settings';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -469,6 +472,28 @@ const SettingsPlaceholder: React.FC = () => {
           <p className="text-gray-500 dark:text-gray-400">Loading settings...</p>
         </div>
       </div>
+    );
+  }
+
+  if (error && !settings) {
+    return (
+      <Card className="max-w-2xl">
+        <CardContent className="text-center py-12">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Error Loading Settings</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadSettings}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            Try Again
+          </button>
+        </CardContent>
+      </Card>
     );
   }
 
