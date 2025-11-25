@@ -40,11 +40,13 @@ export const LoginPage: React.FC = () => {
         {/* Header */}
         <div className="text-center">
           <div className="mx-auto flex justify-center">
-            <img
-              src="/codex-logo-2024.svg"
-              alt="Codex Logo"
-              className="h-16 w-auto"
-            />
+            <div className="bg-white dark:bg-gray-100 p-3 rounded-lg shadow-sm">
+              <img
+                src="/codex-logo-2024.svg"
+                alt="Codex Logo"
+                className="h-16 w-auto"
+              />
+            </div>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-gray-100">
             Codex Web

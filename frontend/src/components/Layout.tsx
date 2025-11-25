@@ -184,11 +184,13 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, currentPath }) => {
     <div className="flex flex-col flex-grow border-r border-gray-200 dark:border-gray-700 pt-5 bg-white dark:bg-gray-800 overflow-y-auto">
       <div className="flex items-center flex-shrink-0 px-4">
         <div className="flex items-center space-x-3">
-          <img
-            src="/codex-logo-2024.svg"
-            alt="Codex Logo"
-            className="h-8 w-auto"
-          />
+          <div className="bg-white dark:bg-gray-100 p-1.5 rounded-md">
+            <img
+              src="/codex-logo-2024.svg"
+              alt="Codex Logo"
+              className="h-8 w-auto"
+            />
+          </div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Codex Web</h1>
         </div>
       </div>
