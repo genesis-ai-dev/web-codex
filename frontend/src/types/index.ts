@@ -12,10 +12,10 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  name: string;
+  name?: string;
   groups: string[];
   groupMemberships?: GroupMembership[];
-  isAdmin?: boolean;
+  isAdmin: boolean;
 }
 
 export interface Group {
