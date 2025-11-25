@@ -191,7 +191,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
                   {!isEditingProfile && (
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => setIsEditingProfile(true)}
                     >
@@ -258,7 +258,7 @@ export const ProfilePage: React.FC = () => {
                       <div className="flex justify-end space-x-3 pt-4">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="secondary"
                           onClick={handleCancelProfileEdit}
                           disabled={loading}
                         >
@@ -291,7 +291,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
                   {!isChangingPassword && (
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => setIsChangingPassword(true)}
                     >
@@ -331,7 +331,7 @@ export const ProfilePage: React.FC = () => {
                       <div className="flex justify-end space-x-3 pt-4">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="secondary"
                           onClick={handleCancelPasswordChange}
                           disabled={loading}
                         >
