@@ -30,6 +30,7 @@ export interface AuthenticatedRequest extends Request {
 export interface JwtPayload {
   sub: string;
   username?: string;
+  name?: string; // User's display name from OAuth provider
   email?: string; // Optional because access tokens don't contain email
   groups?: string[];
   iat: number;

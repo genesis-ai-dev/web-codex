@@ -18,7 +18,8 @@ class UserService {
         try {
           user = await dynamodbService.createUser({
             id: `usr_${uuidv4().replace(/-/g, '')}`,
-            username: jwtPayload.username || jwtPayload.email.split('@')[0],
+            username: jwtPayload.email.split('@')[0], // Use email prefix as username
+            name: jwtPayload.name, // Use name from OAuth provider if available
             email: jwtPayload.email,
             groups: [], // Start with no application groups
             isAdmin: isAdmin, // Set from OAuth/Cognito groups
@@ -45,13 +46,20 @@ class UserService {
         }
       }
 
-      // Always update last login and admin status (for both new and existing users)
+      // Always update last login, admin status, and name (for both new and existing users)
       // IMPORTANT: Do NOT overwrite application groups with JWT groups
-      user = await dynamodbService.updateUser(user.id, {
+      const updates: Partial<User> = {
         lastLoginAt: new Date().toISOString(),
         isAdmin: isAdmin, // Always sync admin status from OAuth/Cognito
         // groups field is intentionally NOT updated here - preserve application groups
-      });
+      };
+
+      // Update name if provided in JWT (keep existing name if not provided)
+      if (jwtPayload.name) {
+        updates.name = jwtPayload.name;
+      }
+
+      user = await dynamodbService.updateUser(user.id, updates);
 
       return user;
     } catch (error) {

@@ -35,6 +35,7 @@ async function verifyGoogleToken(token: string): Promise<JwtPayload> {
 
     return {
       sub: payload.sub as string,
+      name: payload.name as string,
       email: payload.email as string,
       iat: payload.iat as number,
       exp: payload.exp as number,
@@ -58,6 +59,7 @@ async function verifyCognitoToken(token: string): Promise<JwtPayload> {
     return {
       sub: payload.sub,
       username: payload['cognito:username'] as string,
+      name: payload.name as string,
       email: payload.email as string,
       groups: payload['cognito:groups'] as string[] || [],
       iat: payload.iat,
@@ -68,11 +70,12 @@ async function verifyCognitoToken(token: string): Promise<JwtPayload> {
     try {
       const payload = await cognitoAccessTokenVerifier.verify(token);
 
-      // Access tokens don't contain email or username, so we need to get user from sub
+      // Access tokens don't contain email, username, or name, so we need to get user from sub
       // We'll return minimal info and let the calling code handle fetching full user details
       return {
         sub: payload.sub,
         username: payload.username as string,
+        name: payload.name as string, // Usually not present in access tokens
         groups: payload['cognito:groups'] as string[] || [],
         iat: payload.iat,
         exp: payload.exp,

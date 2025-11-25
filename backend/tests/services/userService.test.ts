@@ -15,8 +15,9 @@ describe('UserService', () => {
     const jwtPayload: JwtPayload = {
       sub: 'sub_123',
       email: 'test@example.com',
-      username: 'testuser',
-      groups: ['group1', 'group2'],
+      username: 'cognito-uuid-123', // Cognito username (often a UUID)
+      name: 'testuser', // User's actual name from OAuth
+      groups: ['platform-admins'], // OAuth groups (not application groups)
       iat: Date.now(),
       exp: Date.now() + 3600000,
     };
@@ -24,25 +25,29 @@ describe('UserService', () => {
     it('should create new user if not exists', async () => {
       const newUser: User = {
         id: 'usr_123',
-        username: 'testuser',
+        username: 'test',
         email: 'test@example.com',
-        groups: ['group1', 'group2'],
-        isAdmin: false,
-        createdAt: new Date(),
+        name: 'testuser',
+        groups: [],
+        isAdmin: true,
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
       };
 
       (dynamodbService.getUserByEmail as jest.Mock).mockResolvedValue(null);
       (dynamodbService.createUser as jest.Mock).mockResolvedValue(newUser);
+      (dynamodbService.updateUser as jest.Mock).mockResolvedValue(newUser);
 
       const result = await userService.getOrCreateUser(jwtPayload);
 
       expect(dynamodbService.getUserByEmail).toHaveBeenCalledWith('test@example.com');
       expect(dynamodbService.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
-          username: 'testuser',
+          username: 'test', // Email prefix
+          name: 'testuser', // From JWT payload
           email: 'test@example.com',
-          groups: ['group1', 'group2'],
-          isAdmin: false,
+          groups: [], // Start with empty groups
+          isAdmin: true, // User is in platform-admins OAuth group
         })
       );
       expect(result).toEqual(newUser);
@@ -62,17 +67,20 @@ describe('UserService', () => {
         email: 'test@example.com',
         groups: [],
         isAdmin: false,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
       };
 
       (dynamodbService.getUserByEmail as jest.Mock).mockResolvedValue(null);
       (dynamodbService.createUser as jest.Mock).mockResolvedValue(newUser);
+      (dynamodbService.updateUser as jest.Mock).mockResolvedValue(newUser);
 
       await userService.getOrCreateUser(payloadWithoutUsername);
 
       expect(dynamodbService.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
           username: 'test',
+          name: undefined, // No name in payload
         })
       );
     });
@@ -80,17 +88,18 @@ describe('UserService', () => {
     it('should update existing user on login', async () => {
       const existingUser: User = {
         id: 'usr_123',
-        username: 'testuser',
+        username: 'test',
         email: 'test@example.com',
         groups: ['oldgroup'],
         isAdmin: false,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       };
 
       const updatedUser: User = {
         ...existingUser,
-        groups: ['group1', 'group2'],
-        lastLoginAt: new Date(),
+        name: 'testuser',
+        isAdmin: true,
+        lastLoginAt: new Date().toISOString(),
       };
 
       (dynamodbService.getUserByEmail as jest.Mock).mockResolvedValue(existingUser);
@@ -102,7 +111,9 @@ describe('UserService', () => {
       expect(dynamodbService.updateUser).toHaveBeenCalledWith(
         'usr_123',
         expect.objectContaining({
-          groups: ['group1', 'group2'],
+          lastLoginAt: expect.any(String),
+          isAdmin: true, // Should sync admin status from OAuth groups
+          name: 'testuser', // Should update name from JWT
         })
       );
       expect(result).toEqual(updatedUser);
