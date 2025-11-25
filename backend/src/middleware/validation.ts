@@ -198,6 +198,7 @@ export const commonSchemas = {
 
   addUserToGroup: Joi.object({
     groupId: Joi.string().required(),
+    role: Joi.string().valid('admin', 'member').optional(),
   }),
 
   // Query filters

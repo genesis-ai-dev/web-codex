@@ -21,9 +21,6 @@ export const config = {
   dynamodbTableName: process.env.DYNAMODB_TABLE_NAME || '',
   dynamodbEndpoint: process.env.DYNAMODB_ENDPOINT || undefined,
 
-  // Redis
-  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
-
   // Kubernetes
   kubernetesNamespacePrefix: process.env.KUBERNETES_NAMESPACE_PREFIX || 'group-',
   kubernetesServiceAccount: process.env.KUBERNETES_SERVICE_ACCOUNT || 'backend-api-sa',

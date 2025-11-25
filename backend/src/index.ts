@@ -19,7 +19,6 @@ logger.info('Configuration loaded:', {
   logLevel: config.logLevel,
   awsRegion: config.awsRegion,
   dynamodbRegion: config.dynamodbRegion,
-  redisUrl: config.redisUrl?.replace(/:[^:]*@/, ':***@'), // Hide password if present
   kubernetesNamespacePrefix: config.kubernetesNamespacePrefix,
 });
 
@@ -29,7 +28,6 @@ const requiredEnvVars = [
   'AWS_REGION',
   'DYNAMODB_REGION',
   'DYNAMODB_TABLE_PREFIX',
-  'REDIS_URL',
 ];
 
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);

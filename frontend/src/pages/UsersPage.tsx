@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
-import { User, Group } from '../types';
+import { User, Group, GroupRole, GroupMembership } from '../types';
 import { apiService } from '../services/api';
 import { getErrorMessage } from '../utils';
 
@@ -345,12 +345,24 @@ const UserRow: React.FC<UserRowProps> = ({ user, groups, onManageGroups, onToggl
             <div className="flex flex-wrap gap-1">
               {user.groups.slice(0, 2).map(groupId => {
                 const group = groups.find(g => g.id === groupId);
+                const membership = user.groupMemberships?.find(m => m.groupId === groupId);
+                const isGroupAdmin = membership?.role === GroupRole.ADMIN;
                 return (
                   <span
                     key={groupId}
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      isGroupAdmin
+                        ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200'
+                        : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
+                    }`}
+                    title={isGroupAdmin ? `Group Admin of ${group?.displayName}` : undefined}
                   >
                     {group?.displayName || groupId}
+                    {isGroupAdmin && (
+                      <svg className="ml-1 w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                      </svg>
+                    )}
                   </span>
                 );
               })}
@@ -419,6 +431,12 @@ const ManageGroupsModal: React.FC<ManageGroupsModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper to get user's role in a group
+  const getUserGroupRole = (groupId: string): GroupRole | null => {
+    const membership = user.groupMemberships?.find(m => m.groupId === groupId);
+    return membership?.role || null;
+  };
+
   const handleToggleGroup = async (groupId: string, isCurrentlyMember: boolean) => {
     setIsProcessing(true);
     setError(null);
@@ -429,6 +447,21 @@ const ManageGroupsModal: React.FC<ManageGroupsModalProps> = ({
       } else {
         await onAddToGroup(user.id, groupId);
       }
+    } catch (error) {
+      setError(getErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSetRole = async (groupId: string, role: GroupRole) => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      await apiService.setUserGroupRole(user.id, groupId, role);
+      // The parent will reload and the user state will update
+      window.location.reload(); // Simple reload for now
     } catch (error) {
       setError(getErrorMessage(error));
     } finally {
@@ -468,17 +501,32 @@ const ManageGroupsModal: React.FC<ManageGroupsModalProps> = ({
           {groups.length > 0 ? (
             groups.map((group) => {
               const isMember = user.groups.includes(group.id);
+              const currentRole = getUserGroupRole(group.id);
 
               return (
                 <div
                   key={group.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="flex items-start justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="font-medium text-gray-900 dark:text-gray-100">{group.displayName}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">{group.namespace}</div>
                     {group.description && (
                       <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{group.description}</div>
+                    )}
+                    {isMember && currentRole && (
+                      <div className="mt-2 flex items-center space-x-2">
+                        <span className="text-xs text-gray-600 dark:text-gray-400">Role:</span>
+                        <select
+                          value={currentRole}
+                          onChange={(e) => handleSetRole(group.id, e.target.value as GroupRole)}
+                          disabled={isProcessing}
+                          className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                          <option value={GroupRole.MEMBER}>Member</option>
+                          <option value={GroupRole.ADMIN}>Group Admin</option>
+                        </select>
+                      </div>
                     )}
                   </div>
                   <Button

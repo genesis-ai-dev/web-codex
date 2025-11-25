@@ -1,11 +1,10 @@
 /**
  * Integration test setup
- * Configures environment to use real Redis and DynamoDB for testing
+ * Configures environment to use real DynamoDB for testing
  */
 
 // Set test environment variables BEFORE any imports
 process.env.NODE_ENV = 'test';
-process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 process.env.DYNAMODB_ENDPOINT = process.env.DYNAMODB_ENDPOINT || 'http://localhost:8000';
 process.env.AWS_REGION = process.env.AWS_REGION || 'us-west-2';
 process.env.DYNAMODB_TABLE_PREFIX = 'test-vscode-platform';
@@ -50,6 +49,5 @@ jest.mock('aws-jwt-verify', () => ({
 jest.setTimeout(30000);
 
 console.log('Integration test setup:');
-console.log('- Redis URL:', process.env.REDIS_URL);
 console.log('- DynamoDB Endpoint:', process.env.DYNAMODB_ENDPOINT);
 console.log('- Table Prefix:', process.env.DYNAMODB_TABLE_PREFIX);

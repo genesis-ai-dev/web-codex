@@ -5,7 +5,6 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.AWS_REGION = 'us-west-2';
 process.env.DYNAMODB_TABLE_PREFIX = 'vscode-platform-test';
-process.env.REDIS_URL = 'redis://localhost:6379';
 
 // Mock AWS SDK
 jest.mock('aws-sdk', () => ({
