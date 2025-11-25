@@ -133,7 +133,7 @@ router.post('/users',
 
 // Get user details
 router.get('/users/:userId',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
@@ -174,7 +174,7 @@ router.get('/users/:userId',
 
 // Update user
 router.patch('/users/:userId',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   validate(commonSchemas.updateUser),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -220,7 +220,7 @@ router.patch('/users/:userId',
 
 // Delete user
 router.delete('/users/:userId',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
@@ -280,7 +280,7 @@ router.delete('/users/:userId',
 
 // Reset user password
 router.post('/users/:userId/reset-password',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   validate(commonSchemas.resetPassword),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -323,7 +323,7 @@ router.post('/users/:userId/reset-password',
 
 // Enable user account
 router.post('/users/:userId/enable',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
@@ -361,7 +361,7 @@ router.post('/users/:userId/enable',
 
 // Disable user account
 router.post('/users/:userId/disable',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
@@ -516,7 +516,7 @@ router.get('/health', async (req: AuthenticatedRequest, res: Response) => {
 
 // Promote user to admin
 router.post('/users/:userId/promote',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
@@ -561,7 +561,7 @@ router.post('/users/:userId/promote',
 
 // Demote admin user
 router.post('/users/:userId/demote',
-  validateParams(commonSchemas.id),
+  validateParams(commonSchemas.userId),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
