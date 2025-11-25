@@ -83,6 +83,19 @@ class ApiService {
     return response.data.user;
   }
 
+  async updateProfile(updates: { name?: string; email?: string }): Promise<User> {
+    const response = await this.client.patch('/auth/profile', updates);
+    return response.data.user;
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string; providerUrl?: string }> {
+    const response = await this.client.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
+  }
+
   // Dashboard
   async getDashboardStats(): Promise<DashboardStats> {
     const response = await this.client.get('/dashboard/stats');

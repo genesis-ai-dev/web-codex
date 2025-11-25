@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { WorkspacesPage } from './pages/WorkspacesPage';
 import { WorkspaceDetailsPage } from './pages/WorkspaceDetailsPage';
 import { AdminPage } from './pages/AdminPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { AuthConfig } from './types';
 import './styles/index.css';
 
@@ -35,6 +36,7 @@ function App() {
               <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/workspaces" element={<ProtectedRoute><WorkspacesPage /></ProtectedRoute>} />
               <Route path="/workspaces/:workspaceId" element={<ProtectedRoute><WorkspaceDetailsPage /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
