@@ -25,6 +25,7 @@
   "author": "VSCode Platform Team",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.515.0",
     "@kubernetes/client-node": "^1.4.0",
     "@types/ws": "^8.18.1",
     "aws-jwt-verify": "^4.0.1",

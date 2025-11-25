@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
+import { Input } from '../components/Input';
 import { User, Group } from '../types';
 import { apiService } from '../services/api';
 import { getErrorMessage } from '../utils';
@@ -18,6 +19,8 @@ export const UsersPage: React.FC<UsersPageProps> = ({ isEmbedded = false }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showManageGroupsModal, setShowManageGroupsModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showUserActionsModal, setShowUserActionsModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -48,6 +51,22 @@ export const UsersPage: React.FC<UsersPageProps> = ({ isEmbedded = false }) => {
     setShowManageGroupsModal(true);
   };
 
+  const handleUserActions = (user: User) => {
+    setSelectedUser(user);
+    setShowUserActionsModal(true);
+  };
+
+  const handleCreateUser = async (userData: any) => {
+    try {
+      const newUser = await apiService.createUser(userData);
+      setUsers(prev => [...prev, newUser]);
+      setShowCreateUserModal(false);
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      throw error;
+    }
+  };
+
   const handleAddUserToGroup = async (userId: string, groupId: string) => {
     try {
       const updatedUser = await apiService.addUserToGroup(userId, groupId);
@@ -70,6 +89,38 @@ export const UsersPage: React.FC<UsersPageProps> = ({ isEmbedded = false }) => {
       }
     } catch (error) {
       console.error('Failed to remove user from group:', error);
+      throw error;
+    }
+  };
+
+  const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
+    try {
+      const updatedUser = isCurrentlyAdmin
+        ? await apiService.demoteUserFromAdmin(userId)
+        : await apiService.promoteUserToAdmin(userId);
+
+      setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+      if (selectedUser?.id === userId) {
+        setSelectedUser(updatedUser);
+      }
+    } catch (error) {
+      console.error('Failed to toggle admin status:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await apiService.deleteUser(userId);
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setShowUserActionsModal(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Failed to delete user:', error);
       throw error;
     }
   };
@@ -115,11 +166,22 @@ export const UsersPage: React.FC<UsersPageProps> = ({ isEmbedded = false }) => {
   const pageContent = (
     <div className={isEmbedded ? '' : 'px-4 sm:px-6 lg:px-8 py-8'}>
         {/* Page header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Users</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Manage users and their group memberships across the platform.
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Users</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Manage users and their group memberships across the platform.
+            </p>
+          </div>
+          <Button
+            onClick={() => setShowCreateUserModal(true)}
+            className="ml-4"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create User
+          </Button>
         </div>
 
         {/* Users table */}
@@ -157,6 +219,8 @@ export const UsersPage: React.FC<UsersPageProps> = ({ isEmbedded = false }) => {
                         user={user}
                         groups={groups}
                         onManageGroups={handleManageGroups}
+                        onToggleAdmin={handleToggleAdmin}
+                        onDeleteUser={handleDeleteUser}
                       />
                     ))}
                   </tbody>
@@ -179,6 +243,14 @@ export const UsersPage: React.FC<UsersPageProps> = ({ isEmbedded = false }) => {
             </p>
           </div>
         )}
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={showCreateUserModal}
+        onClose={() => setShowCreateUserModal(false)}
+        onCreateUser={handleCreateUser}
+        groups={groups}
+      />
 
       {/* Manage Groups Modal */}
       {selectedUser && (
@@ -204,9 +276,34 @@ interface UserRowProps {
   user: User;
   groups: Group[];
   onManageGroups: (user: User) => void;
+  onToggleAdmin: (userId: string, isCurrentlyAdmin: boolean) => Promise<void>;
+  onDeleteUser: (userId: string) => Promise<void>;
 }
 
-const UserRow: React.FC<UserRowProps> = ({ user, groups, onManageGroups }) => {
+const UserRow: React.FC<UserRowProps> = ({ user, groups, onManageGroups, onToggleAdmin, onDeleteUser }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleToggleAdmin = async () => {
+    setIsProcessing(true);
+    try {
+      await onToggleAdmin(user.id, user.isAdmin);
+    } catch (error) {
+      console.error('Failed to toggle admin:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsProcessing(true);
+    try {
+      await onDeleteUser(user.id);
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
       <td className="px-6 py-4 whitespace-nowrap">
@@ -269,13 +366,34 @@ const UserRow: React.FC<UserRowProps> = ({ user, groups, onManageGroups }) => {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onManageGroups(user)}
-        >
-          Manage Groups
-        </Button>
+        <div className="flex items-center justify-end space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onManageGroups(user)}
+            disabled={isProcessing}
+          >
+            Groups
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleToggleAdmin}
+            disabled={isProcessing}
+            className={user.isAdmin ? 'text-purple-600' : ''}
+          >
+            {user.isAdmin ? 'Demote' : 'Promote'}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleDelete}
+            disabled={isProcessing}
+            className="text-error-600 hover:text-error-700"
+          >
+            Delete
+          </Button>
+        </div>
       </td>
     </tr>
   );
@@ -387,6 +505,187 @@ const ManageGroupsModal: React.FC<ManageGroupsModalProps> = ({
           </Button>
         </div>
       </div>
+    </Modal>
+  );
+};
+
+interface CreateUserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreateUser: (userData: any) => Promise<void>;
+  groups: Group[];
+}
+
+const CreateUserModal: React.FC<CreateUserModalProps> = ({
+  isOpen,
+  onClose,
+  onCreateUser,
+  groups,
+}) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    email: '',
+    name: '',
+    temporaryPassword: '',
+    sendInvite: true,
+    isAdmin: false,
+    groups: [] as string[],
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      await onCreateUser(formData);
+      // Reset form
+      setFormData({
+        email: '',
+        name: '',
+        temporaryPassword: '',
+        sendInvite: true,
+        isAdmin: false,
+        groups: [],
+      });
+    } catch (error) {
+      setError(getErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGroupToggle = (groupId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      groups: prev.groups.includes(groupId)
+        ? prev.groups.filter(id => id !== groupId)
+        : [...prev.groups, groupId],
+    }));
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create New User"
+      size="lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-md bg-error-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-error-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-error-800">Error</h3>
+                <div className="mt-1 text-sm text-error-700">{error}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <Input
+            label="Email Address"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+            placeholder="user@example.com"
+          />
+        </div>
+
+        <div>
+          <Input
+            label="Full Name (optional)"
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="John Doe"
+          />
+        </div>
+
+        <div>
+          <Input
+            label="Temporary Password"
+            type="password"
+            value={formData.temporaryPassword}
+            onChange={(e) => setFormData({ ...formData, temporaryPassword: e.target.value })}
+            required
+            placeholder="Minimum 8 characters"
+            helperText="User will be prompted to change this on first login"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="sendInvite"
+            checked={formData.sendInvite}
+            onChange={(e) => setFormData({ ...formData, sendInvite: e.target.checked })}
+            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+          />
+          <label htmlFor="sendInvite" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Send invitation email
+          </label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isAdmin"
+            checked={formData.isAdmin}
+            onChange={(e) => setFormData({ ...formData, isAdmin: e.target.checked })}
+            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+          />
+          <label htmlFor="isAdmin" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Grant admin privileges
+          </label>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Assign to Groups (optional)
+          </label>
+          <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3">
+            {groups.length > 0 ? (
+              groups.map((group) => (
+                <div key={group.id} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`group-${group.id}`}
+                    checked={formData.groups.includes(group.id)}
+                    onChange={() => handleGroupToggle(group.id)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor={`group-${group.id}`}
+                    className="ml-2 text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    {group.displayName}
+                  </label>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No groups available</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-700">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isProcessing}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isProcessing}>
+            {isProcessing ? 'Creating...' : 'Create User'}
+          </Button>
+        </div>
+      </form>
     </Modal>
   );
 };

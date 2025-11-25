@@ -2,12 +2,14 @@ import { Router, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { validate, validateQuery, validateParams, commonSchemas } from '../middleware/validation';
 import { adminRateLimit } from '../middleware/rateLimiting';
-import { AuthenticatedRequest, User, PaginatedResponse, AuditLog, SystemSettings, UpdateSystemSettingsRequest } from '../types';
+import { AuthenticatedRequest, User, PaginatedResponse, AuditLog, SystemSettings, UpdateSystemSettingsRequest, GroupRole } from '../types';
 import { dynamodbService } from '../services/dynamodbService';
 import { kubernetesService } from '../services/kubernetesService';
 import { userService } from '../services/userService';
+import { cognitoService } from '../services/cognitoService';
 import { logger } from '../config/logger';
-import { NotFoundError } from '../utils/errors';
+import { NotFoundError, ValidationError } from '../utils/errors';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -45,6 +47,85 @@ router.get('/users',
       res.json(response);
     } catch (error) {
       logger.error('Failed to list users:', error);
+      throw error;
+    }
+  }
+);
+
+// Create a new user
+router.post('/users',
+  validate(commonSchemas.createUser),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { email, name, temporaryPassword, sendInvite, isAdmin, groups } = req.body;
+
+      // Check if user already exists
+      const existingUser = await userService.getUserByEmail(email);
+      if (existingUser) {
+        throw new ValidationError(`User with email ${email} already exists`);
+      }
+
+      // Validate groups exist
+      for (const groupId of groups) {
+        const group = await dynamodbService.getGroup(groupId);
+        if (!group) {
+          throw new ValidationError(`Group ${groupId} not found`);
+        }
+      }
+
+      // Create user in Cognito first (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.createUser(email, temporaryPassword, name, sendInvite);
+
+        // Add to admin group if needed
+        if (isAdmin) {
+          await cognitoService.promoteToAdmin(email);
+        }
+      }
+
+      // Create user in database
+      const user = await dynamodbService.createUser({
+        id: `usr_${uuidv4().replace(/-/g, '')}`,
+        username: name || email.split('@')[0],
+        email: email,
+        name: name,
+        groups: groups,
+        isAdmin: isAdmin,
+      });
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'create_user',
+        resource: `user:${user.id}`,
+        details: {
+          email: user.email,
+          isAdmin,
+          groups,
+          cognitoEnabled: cognitoService.isEnabled()
+        },
+        success: true,
+      });
+
+      logger.info(`User ${email} created by admin ${req.user!.id}`);
+      res.status(201).json(user);
+    } catch (error) {
+      // Log failed admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'create_user',
+        resource: 'user:new',
+        details: {
+          email: req.body.email,
+          error: error.message
+        },
+        success: false,
+        error: error.message,
+      });
+
+      logger.error('Failed to create user:', error);
       throw error;
     }
   }
@@ -143,32 +224,40 @@ router.delete('/users/:userId',
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
-      
+
       const user = await userService.getUserById(userId);
       if (!user) {
         throw new NotFoundError('User not found');
       }
-      
+
       // Check if user has any workspaces
       const workspaces = await dynamodbService.getUserWorkspaces(userId);
       if (workspaces.length > 0) {
         // In a production system, you might want to transfer or delete workspaces
         logger.warn(`Deleting user ${userId} with ${workspaces.length} active workspaces`);
       }
-      
-      // Delete user
+
+      // Delete from Cognito first (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.deleteUser(user.email);
+      }
+
+      // Delete user from database
       await userService.deleteUser(userId);
-      
+
       // Log admin action
       await dynamodbService.createAuditLog({
         userId: req.user!.id,
         username: req.user!.username,
         action: 'delete_user',
         resource: `user:${userId}`,
-        details: { deletedUser: user.email },
+        details: {
+          deletedUser: user.email,
+          cognitoEnabled: cognitoService.isEnabled()
+        },
         success: true,
       });
-      
+
       logger.info(`User ${userId} deleted by admin ${req.user!.id}`);
       res.status(204).send();
     } catch (error) {
@@ -182,8 +271,135 @@ router.delete('/users/:userId',
         success: false,
         error: error.message,
       });
-      
+
       logger.error('Failed to delete user:', error);
+      throw error;
+    }
+  }
+);
+
+// Reset user password
+router.post('/users/:userId/reset-password',
+  validateParams(commonSchemas.id),
+  validate(commonSchemas.resetPassword),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const { newPassword, permanent } = req.body;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Reset password in Cognito (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.setUserPassword(user.email, newPassword, permanent);
+      } else {
+        throw new ValidationError('Password reset is only available when Cognito is configured');
+      }
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'reset_user_password',
+        resource: `user:${userId}`,
+        details: {
+          targetUser: user.email,
+          permanent
+        },
+        success: true,
+      });
+
+      logger.info(`Password reset for user ${userId} by admin ${req.user!.id}`);
+      res.json({ message: 'Password reset successfully' });
+    } catch (error) {
+      logger.error('Failed to reset user password:', error);
+      throw error;
+    }
+  }
+);
+
+// Enable user account
+router.post('/users/:userId/enable',
+  validateParams(commonSchemas.id),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Enable in Cognito (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.enableUser(user.email);
+      } else {
+        throw new ValidationError('User enable/disable is only available when Cognito is configured');
+      }
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'enable_user',
+        resource: `user:${userId}`,
+        details: { targetUser: user.email },
+        success: true,
+      });
+
+      logger.info(`User ${userId} enabled by admin ${req.user!.id}`);
+      res.json({ message: 'User enabled successfully' });
+    } catch (error) {
+      logger.error('Failed to enable user:', error);
+      throw error;
+    }
+  }
+);
+
+// Disable user account
+router.post('/users/:userId/disable',
+  validateParams(commonSchemas.id),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Prevent self-disable
+      if (userId === req.user!.id) {
+        return res.status(400).json({
+          message: 'Cannot disable yourself',
+          code: 'SELF_DISABLE_NOT_ALLOWED'
+        });
+      }
+
+      // Disable in Cognito (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.disableUser(user.email);
+      } else {
+        throw new ValidationError('User enable/disable is only available when Cognito is configured');
+      }
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'disable_user',
+        resource: `user:${userId}`,
+        details: { targetUser: user.email },
+        success: true,
+      });
+
+      logger.info(`User ${userId} disabled by admin ${req.user!.id}`);
+      res.json({ message: 'User disabled successfully' });
+    } catch (error) {
+      logger.error('Failed to disable user:', error);
       throw error;
     }
   }
@@ -304,28 +520,36 @@ router.post('/users/:userId/promote',
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
-      
+
       const user = await userService.getUserById(userId);
       if (!user) {
         throw new NotFoundError('User not found');
       }
-      
+
       if (user.isAdmin) {
         return res.json({ message: 'User is already an admin' });
       }
-      
+
+      // Sync with Cognito first (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.promoteToAdmin(user.email);
+      }
+
       const updatedUser = await userService.setUserAdmin(userId, true);
-      
+
       // Log admin action
       await dynamodbService.createAuditLog({
         userId: req.user!.id,
         username: req.user!.username,
         action: 'promote_user_to_admin',
         resource: `user:${userId}`,
-        details: { promotedUser: user.email },
+        details: {
+          promotedUser: user.email,
+          cognitoEnabled: cognitoService.isEnabled()
+        },
         success: true,
       });
-      
+
       logger.info(`User ${userId} promoted to admin by ${req.user!.id}`);
       res.json(updatedUser);
     } catch (error) {
@@ -359,6 +583,11 @@ router.post('/users/:userId/demote',
         });
       }
 
+      // Sync with Cognito first (if enabled)
+      if (cognitoService.isEnabled()) {
+        await cognitoService.demoteFromAdmin(user.email);
+      }
+
       const updatedUser = await userService.setUserAdmin(userId, false);
 
       // Log admin action
@@ -367,7 +596,10 @@ router.post('/users/:userId/demote',
         username: req.user!.username,
         action: 'demote_admin_user',
         resource: `user:${userId}`,
-        details: { demotedUser: user.email },
+        details: {
+          demotedUser: user.email,
+          cognitoEnabled: cognitoService.isEnabled()
+        },
         success: true,
       });
 
@@ -380,14 +612,14 @@ router.post('/users/:userId/demote',
   }
 );
 
-// Add user to group
+// Add user to group with role
 router.post('/users/:userId/groups',
   validateParams(commonSchemas.userId),
   validate(commonSchemas.addUserToGroup),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { userId } = req.params;
-      const { groupId } = req.body;
+      const { groupId, role } = req.body;
 
       const user = await userService.getUserById(userId);
       if (!user) {
@@ -400,7 +632,10 @@ router.post('/users/:userId/groups',
         throw new NotFoundError('Group not found');
       }
 
-      const updatedUser = await userService.addUserToGroup(userId, groupId);
+      // Default to MEMBER role if not specified
+      const userRole = role || GroupRole.MEMBER;
+
+      const updatedUser = await userService.addUserToGroup(userId, groupId, userRole);
 
       // Log admin action
       await dynamodbService.createAuditLog({
@@ -408,11 +643,11 @@ router.post('/users/:userId/groups',
         username: req.user!.username,
         action: 'add_user_to_group',
         resource: `user:${userId}`,
-        details: { groupId, groupName: group.name },
+        details: { groupId, groupName: group.name, role: userRole },
         success: true,
       });
 
-      logger.info(`User ${userId} added to group ${groupId} by admin ${req.user!.id}`);
+      logger.info(`User ${userId} added to group ${groupId} with role ${userRole} by admin ${req.user!.id}`);
       res.json(updatedUser);
     } catch (error) {
       logger.error('Failed to add user to group:', error);
@@ -449,6 +684,129 @@ router.delete('/users/:userId/groups/:groupId',
       res.json(updatedUser);
     } catch (error) {
       logger.error('Failed to remove user from group:', error);
+      throw error;
+    }
+  }
+);
+
+// Set user's role in a group
+router.patch('/users/:userId/groups/:groupId/role',
+  validateParams(commonSchemas.groupAndUserId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, groupId } = req.params;
+      const { role } = req.body;
+
+      // Validate role
+      if (!role || !Object.values(GroupRole).includes(role)) {
+        throw new ValidationError('Invalid role. Must be "admin" or "member"');
+      }
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Verify group exists
+      const group = await dynamodbService.getGroup(groupId);
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
+      const updatedUser = await userService.setUserGroupRole(userId, groupId, role);
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'set_user_group_role',
+        resource: `user:${userId}`,
+        details: { groupId, groupName: group.name, role },
+        success: true,
+      });
+
+      logger.info(`User ${userId} role in group ${groupId} set to ${role} by admin ${req.user!.id}`);
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Failed to set user group role:', error);
+      throw error;
+    }
+  }
+);
+
+// Promote user to group admin
+router.post('/users/:userId/groups/:groupId/promote',
+  validateParams(commonSchemas.groupAndUserId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, groupId } = req.params;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Verify group exists
+      const group = await dynamodbService.getGroup(groupId);
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
+      const updatedUser = await userService.setUserGroupRole(userId, groupId, GroupRole.ADMIN);
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'promote_user_to_group_admin',
+        resource: `user:${userId}`,
+        details: { groupId, groupName: group.name },
+        success: true,
+      });
+
+      logger.info(`User ${userId} promoted to group admin for group ${groupId} by admin ${req.user!.id}`);
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Failed to promote user to group admin:', error);
+      throw error;
+    }
+  }
+);
+
+// Demote user from group admin to member
+router.post('/users/:userId/groups/:groupId/demote',
+  validateParams(commonSchemas.groupAndUserId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, groupId } = req.params;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Verify group exists
+      const group = await dynamodbService.getGroup(groupId);
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
+      const updatedUser = await userService.setUserGroupRole(userId, groupId, GroupRole.MEMBER);
+
+      // Log admin action
+      await dynamodbService.createAuditLog({
+        userId: req.user!.id,
+        username: req.user!.username,
+        action: 'demote_user_from_group_admin',
+        resource: `user:${userId}`,
+        details: { groupId, groupName: group.name },
+        success: true,
+      });
+
+      logger.info(`User ${userId} demoted from group admin for group ${groupId} by admin ${req.user!.id}`);
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Failed to demote user from group admin:', error);
       throw error;
     }
   }

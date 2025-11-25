@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { dynamodbService } from './dynamodbService';
 import { logger } from '../config/logger';
-import { User, JwtPayload } from '../types';
+import { User, JwtPayload, GroupRole, GroupMembership } from '../types';
 
 class UserService {
   async getOrCreateUser(jwtPayload: JwtPayload): Promise<User> {
@@ -80,18 +80,38 @@ class UserService {
     return await dynamodbService.listUsers(limit, nextToken);
   }
 
-  async addUserToGroup(userId: string, groupId: string): Promise<User> {
+  async addUserToGroup(userId: string, groupId: string, role: GroupRole = GroupRole.MEMBER): Promise<User> {
     const user = await dynamodbService.getUser(userId);
     if (!user) {
       throw new Error('User not found');
     }
 
-    if (!user.groups.includes(groupId)) {
-      const updatedGroups = [...user.groups, groupId];
-      return await dynamodbService.updateUser(userId, { groups: updatedGroups });
+    // Initialize groupMemberships if it doesn't exist
+    const groupMemberships = user.groupMemberships || [];
+
+    // Check if user is already in the group
+    const existingMembership = groupMemberships.find(m => m.groupId === groupId);
+    if (existingMembership) {
+      // Update the role if different
+      if (existingMembership.role !== role) {
+        const updatedMemberships = groupMemberships.map(m =>
+          m.groupId === groupId ? { ...m, role } : m
+        );
+        return await dynamodbService.updateUser(userId, { groupMemberships: updatedMemberships });
+      }
+      return user;
     }
 
-    return user;
+    // Add new membership
+    const updatedMemberships = [...groupMemberships, { groupId, role }];
+
+    // Also update legacy groups array for backward compatibility
+    const updatedGroups = user.groups.includes(groupId) ? user.groups : [...user.groups, groupId];
+
+    return await dynamodbService.updateUser(userId, {
+      groups: updatedGroups,
+      groupMemberships: updatedMemberships,
+    });
   }
 
   async removeUserFromGroup(userId: string, groupId: string): Promise<User> {
@@ -100,8 +120,49 @@ class UserService {
       throw new Error('User not found');
     }
 
+    // Remove from groupMemberships
+    const updatedMemberships = (user.groupMemberships || []).filter(m => m.groupId !== groupId);
+
+    // Remove from legacy groups array
     const updatedGroups = user.groups.filter(g => g !== groupId);
-    return await dynamodbService.updateUser(userId, { groups: updatedGroups });
+
+    return await dynamodbService.updateUser(userId, {
+      groups: updatedGroups,
+      groupMemberships: updatedMemberships,
+    });
+  }
+
+  async setUserGroupRole(userId: string, groupId: string, role: GroupRole): Promise<User> {
+    const user = await dynamodbService.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Initialize groupMemberships if it doesn't exist
+    const groupMemberships = user.groupMemberships || [];
+
+    // Check if user is in the group
+    const existingMembership = groupMemberships.find(m => m.groupId === groupId);
+    if (!existingMembership) {
+      throw new Error('User is not a member of this group');
+    }
+
+    // Update the role
+    const updatedMemberships = groupMemberships.map(m =>
+      m.groupId === groupId ? { ...m, role } : m
+    );
+
+    return await dynamodbService.updateUser(userId, { groupMemberships: updatedMemberships });
+  }
+
+  async getUserGroupRole(userId: string, groupId: string): Promise<GroupRole | null> {
+    const user = await dynamodbService.getUser(userId);
+    if (!user) {
+      return null;
+    }
+
+    const membership = user.groupMemberships?.find(m => m.groupId === groupId);
+    return membership?.role || null;
   }
 
   async getUserGroups(userId: string): Promise<string[]> {

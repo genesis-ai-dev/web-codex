@@ -171,11 +171,25 @@ export const commonSchemas = {
   }),
 
   // User validation
+  createUser: Joi.object({
+    email: Joi.string().email().required(),
+    name: Joi.string().min(1).max(100).optional(),
+    temporaryPassword: Joi.string().min(8).max(256).required(),
+    sendInvite: Joi.boolean().default(true),
+    isAdmin: Joi.boolean().default(false),
+    groups: Joi.array().items(Joi.string()).default([]),
+  }),
+
   updateUser: Joi.object({
     name: Joi.string().min(1).max(100).optional(),
     isAdmin: Joi.boolean().optional(),
     groups: Joi.array().items(Joi.string()).optional(),
   }).min(1),
+
+  resetPassword: Joi.object({
+    newPassword: Joi.string().min(8).max(256).required(),
+    permanent: Joi.boolean().default(false),
+  }),
 
   addGroupMember: Joi.object({
     userId: Joi.string().required(),

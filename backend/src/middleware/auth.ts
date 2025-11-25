@@ -4,7 +4,7 @@ import * as jose from 'jose';
 import { config } from '../config';
 import { logger } from '../config/logger';
 import { AuthenticationError, AuthorizationError } from '../utils/errors';
-import { AuthenticatedRequest, User, JwtPayload } from '../types';
+import { AuthenticatedRequest, User, JwtPayload, GroupRole } from '../types';
 import { userService } from '../services/userService';
 
 // Initialize Cognito JWT verifier for ID tokens
@@ -133,6 +133,61 @@ export async function authenticate(
   }
 }
 
+/**
+ * Helper function to check if user has a specific role in a group
+ */
+export function hasGroupRole(user: User, groupId: string, role: GroupRole): boolean {
+  // Platform admins have all permissions
+  if (user.isAdmin) {
+    return true;
+  }
+
+  // Check groupMemberships array for role
+  if (user.groupMemberships) {
+    const membership = user.groupMemberships.find(m => m.groupId === groupId);
+    if (membership) {
+      // Admin role has all permissions
+      if (membership.role === GroupRole.ADMIN) {
+        return true;
+      }
+      // Otherwise check if the role matches
+      return membership.role === role;
+    }
+  }
+
+  // Fallback: check legacy groups array (all legacy members are treated as members, not admins)
+  if (user.groups.includes(groupId)) {
+    return role === GroupRole.MEMBER;
+  }
+
+  return false;
+}
+
+/**
+ * Helper function to check if user is a group admin
+ */
+export function isGroupAdmin(user: User, groupId: string): boolean {
+  return hasGroupRole(user, groupId, GroupRole.ADMIN);
+}
+
+/**
+ * Helper function to check if user has any access to a group
+ */
+export function hasGroupAccess(user: User, groupId: string): boolean {
+  // Platform admins have access to all groups
+  if (user.isAdmin) {
+    return true;
+  }
+
+  // Check in groupMemberships
+  if (user.groupMemberships?.some(m => m.groupId === groupId)) {
+    return true;
+  }
+
+  // Check in legacy groups array
+  return user.groups.includes(groupId);
+}
+
 export function requireAdmin(
   req: AuthenticatedRequest,
   res: Response,
@@ -147,12 +202,12 @@ export function requireAdmin(
 export function requireGroupMembership(groupId?: string) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     const targetGroupId = groupId || req.params.groupId || req.body.groupId;
-    
+
     if (!targetGroupId) {
       throw new AuthorizationError('Group ID required');
     }
 
-    if (!req.user?.groups.includes(targetGroupId) && !req.user?.isAdmin) {
+    if (!hasGroupAccess(req.user!, targetGroupId)) {
       throw new AuthorizationError('Insufficient group permissions');
     }
 
@@ -160,17 +215,43 @@ export function requireGroupMembership(groupId?: string) {
   };
 }
 
-export function requireGroupRole(requiredRole: 'admin' | 'developer' | 'viewer') {
+export function requireGroupRole(requiredRole: GroupRole) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     const groupId = req.params.groupId || req.body.groupId;
-    
+
     if (!groupId) {
       throw new AuthorizationError('Group ID required');
     }
 
-    // For now, simplified role checking - in production, you'd check user's specific role in the group
-    if (!req.user?.groups.includes(groupId) && !req.user?.isAdmin) {
+    if (!hasGroupRole(req.user!, groupId, requiredRole)) {
       throw new AuthorizationError('Insufficient group permissions');
+    }
+
+    next();
+  };
+}
+
+/**
+ * Middleware that requires user to be either a platform admin or a group admin for the specified group
+ */
+export function requireGroupAdmin(groupId?: string) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    const targetGroupId = groupId || req.params.groupId || req.body.groupId;
+
+    if (!targetGroupId) {
+      throw new AuthorizationError('Group ID required');
+    }
+
+    const user = req.user!;
+
+    // Platform admins always have access
+    if (user.isAdmin) {
+      return next();
+    }
+
+    // Check if user is a group admin
+    if (!isGroupAdmin(user, targetGroupId)) {
+      throw new AuthorizationError('Group admin privileges required');
     }
 
     next();

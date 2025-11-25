@@ -1,9 +1,20 @@
+export enum GroupRole {
+  ADMIN = 'admin',
+  MEMBER = 'member',
+}
+
+export interface GroupMembership {
+  groupId: string;
+  role: GroupRole;
+}
+
 export interface User {
   id: string;
   username: string;
   email: string;
   name: string;
   groups: string[];
+  groupMemberships?: GroupMembership[];
   isAdmin?: boolean;
 }
 

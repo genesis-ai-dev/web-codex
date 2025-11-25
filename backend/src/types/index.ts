@@ -1,12 +1,23 @@
 import { Request } from 'express';
 
 // User and authentication types
+export enum GroupRole {
+  ADMIN = 'admin',
+  MEMBER = 'member',
+}
+
+export interface GroupMembership {
+  groupId: string;
+  role: GroupRole;
+}
+
 export interface User {
   id: string;
   username: string;
   email: string;
   name?: string;
-  groups: string[];
+  groups: string[]; // Legacy: array of group IDs (kept for backward compatibility)
+  groupMemberships?: GroupMembership[]; // New: group memberships with roles
   isAdmin: boolean;
   createdAt: string;
   lastLoginAt?: string;

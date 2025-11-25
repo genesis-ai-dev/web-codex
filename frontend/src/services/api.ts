@@ -10,7 +10,8 @@ import {
   PaginatedResponse,
   AuditLog,
   ApiError,
-  ComponentHealthStatus
+  ComponentHealthStatus,
+  GroupRole
 } from '../types';
 
 // Helper to get ID token from OIDC storage
@@ -193,6 +194,18 @@ class ApiService {
     return response.data;
   }
 
+  async createUser(data: {
+    email: string;
+    name?: string;
+    temporaryPassword: string;
+    sendInvite?: boolean;
+    isAdmin?: boolean;
+    groups?: string[];
+  }): Promise<User> {
+    const response = await this.client.post('/admin/users', data);
+    return response.data;
+  }
+
   async getUser(userId: string): Promise<User> {
     const response = await this.client.get(`/admin/users/${userId}`);
     return response.data;
@@ -207,13 +220,53 @@ class ApiService {
     await this.client.delete(`/admin/users/${userId}`);
   }
 
-  async addUserToGroup(userId: string, groupId: string): Promise<User> {
-    const response = await this.client.post(`/admin/users/${userId}/groups`, { groupId });
+  async promoteUserToAdmin(userId: string): Promise<User> {
+    const response = await this.client.post(`/admin/users/${userId}/promote`);
+    return response.data;
+  }
+
+  async demoteUserFromAdmin(userId: string): Promise<User> {
+    const response = await this.client.post(`/admin/users/${userId}/demote`);
+    return response.data;
+  }
+
+  async resetUserPassword(userId: string, newPassword: string, permanent: boolean = false): Promise<void> {
+    await this.client.post(`/admin/users/${userId}/reset-password`, {
+      newPassword,
+      permanent,
+    });
+  }
+
+  async enableUser(userId: string): Promise<void> {
+    await this.client.post(`/admin/users/${userId}/enable`);
+  }
+
+  async disableUser(userId: string): Promise<void> {
+    await this.client.post(`/admin/users/${userId}/disable`);
+  }
+
+  async addUserToGroup(userId: string, groupId: string, role?: GroupRole): Promise<User> {
+    const response = await this.client.post(`/admin/users/${userId}/groups`, { groupId, role });
     return response.data;
   }
 
   async removeUserFromGroup(userId: string, groupId: string): Promise<User> {
     const response = await this.client.delete(`/admin/users/${userId}/groups/${groupId}`);
+    return response.data;
+  }
+
+  async setUserGroupRole(userId: string, groupId: string, role: GroupRole): Promise<User> {
+    const response = await this.client.patch(`/admin/users/${userId}/groups/${groupId}/role`, { role });
+    return response.data;
+  }
+
+  async promoteUserToGroupAdmin(userId: string, groupId: string): Promise<User> {
+    const response = await this.client.post(`/admin/users/${userId}/groups/${groupId}/promote`);
+    return response.data;
+  }
+
+  async demoteUserFromGroupAdmin(userId: string, groupId: string): Promise<User> {
+    const response = await this.client.post(`/admin/users/${userId}/groups/${groupId}/demote`);
     return response.data;
   }
 

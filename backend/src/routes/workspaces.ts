@@ -1,14 +1,14 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { randomBytes } from 'crypto';
-import { authenticate, requireGroupMembership } from '../middleware/auth';
+import { authenticate, requireGroupMembership, requireGroupAdmin, isGroupAdmin } from '../middleware/auth';
 import { validate, validateQuery, validateParams, commonSchemas } from '../middleware/validation';
 import { workspaceRateLimit, operationRateLimits } from '../middleware/rateLimiting';
 import { AuthenticatedRequest, WorkspaceStatus, Workspace, CreateWorkspaceRequest, WorkspaceActionRequest } from '../types';
 import { dynamodbService } from '../services/dynamodbService';
 import { kubernetesService } from '../services/kubernetesService';
 import { logger } from '../config/logger';
-import { NotFoundError, ConflictError, ValidationError } from '../utils/errors';
+import { NotFoundError, ConflictError, ValidationError, AuthorizationError } from '../utils/errors';
 
 const router = Router();
 
@@ -312,15 +312,21 @@ router.patch('/:workspaceId',
     try {
       const user = req.user!;
       const { workspaceId } = req.params;
-      
+
       const workspace = await dynamodbService.getWorkspace(workspaceId);
       if (!workspace) {
         throw new NotFoundError('Workspace not found');
       }
-      
-      // Verify user has access
-      if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
-        throw new NotFoundError('Workspace not found');
+
+      // Verify user has permission to update:
+      // - Owner can update their own workspace
+      // - Group admins can update any workspace in their group
+      // - Platform admins can update any workspace
+      const isOwner = workspace.userId === user.id;
+      const isGroupAdminForWorkspace = isGroupAdmin(user, workspace.groupId);
+
+      if (!isOwner && !isGroupAdminForWorkspace && !user.isAdmin) {
+        throw new AuthorizationError('Insufficient permissions to update this workspace');
       }
       
       const updatedWorkspace = await dynamodbService.updateWorkspace(workspaceId, req.body);
@@ -348,9 +354,15 @@ router.delete('/:workspaceId',
         throw new NotFoundError('Workspace not found');
       }
 
-      // Verify user has access
-      if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
-        throw new NotFoundError('Workspace not found');
+      // Verify user has permission to delete:
+      // - Owner can delete their own workspace
+      // - Group admins can delete any workspace in their group
+      // - Platform admins can delete any workspace
+      const isOwner = workspace.userId === user.id;
+      const isGroupAdminForWorkspace = isGroupAdmin(user, workspace.groupId);
+
+      if (!isOwner && !isGroupAdminForWorkspace && !user.isAdmin) {
+        throw new AuthorizationError('Insufficient permissions to delete this workspace');
       }
 
       const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
@@ -402,15 +414,21 @@ router.post('/:workspaceId/actions',
       const user = req.user!;
       const { workspaceId } = req.params;
       const { type }: WorkspaceActionRequest = req.body;
-      
+
       const workspace = await dynamodbService.getWorkspace(workspaceId);
       if (!workspace) {
         throw new NotFoundError('Workspace not found');
       }
-      
-      // Verify user has access
-      if (workspace.userId !== user.id && !user.groups.includes(workspace.groupId) && !user.isAdmin) {
-        throw new NotFoundError('Workspace not found');
+
+      // Verify user has permission to control workspace:
+      // - Owner can control their own workspace
+      // - Group admins can control any workspace in their group
+      // - Platform admins can control any workspace
+      const isOwner = workspace.userId === user.id;
+      const isGroupAdminForWorkspace = isGroupAdmin(user, workspace.groupId);
+
+      if (!isOwner && !isGroupAdminForWorkspace && !user.isAdmin) {
+        throw new AuthorizationError('Insufficient permissions to control this workspace');
       }
 
       const namespace = await getWorkspaceNamespace(workspace);
