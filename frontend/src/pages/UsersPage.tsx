@@ -286,7 +286,7 @@ const UserRow: React.FC<UserRowProps> = ({ user, groups, onManageGroups, onToggl
   const handleToggleAdmin = async () => {
     setIsProcessing(true);
     try {
-      await onToggleAdmin(user.id, user.isAdmin);
+      await onToggleAdmin(user.id, user.isAdmin || false);
     } catch (error) {
       console.error('Failed to toggle admin:', error);
     } finally {
