@@ -58,10 +58,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -90,13 +90,13 @@ const AuthCallbackPage: React.FC = () => {
   }, [isLoading, isAuthenticated]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="text-center">
         <div className="spinner w-8 h-8 mx-auto mb-4"></div>
-        <h2 className="text-lg font-medium text-gray-900 mb-2">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
           Completing sign in...
         </h2>
-        <p className="text-gray-500">
+        <p className="text-gray-500 dark:text-gray-400">
           Please wait while we authenticate you.
         </p>
       </div>

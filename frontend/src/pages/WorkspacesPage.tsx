@@ -562,7 +562,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, items }) => {
               <button
                 key={index}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-md last:rounded-b-md ${
-                  item.destructive ? 'text-error-600 hover:bg-error-50 dark:hover:bg-error-900' : 'text-gray-700 dark:text-gray-300'
+                  item.destructive ? 'text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900' : 'text-gray-700 dark:text-gray-300'
                 }`}
                 onClick={() => {
                   item.onClick();
