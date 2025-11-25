@@ -59,6 +59,15 @@ class UserService {
         updates.name = jwtPayload.name;
       }
 
+      // Fix legacy usernames that are UUIDs - update to email prefix
+      // UUIDs are 32 hex chars (with or without hyphens), often looking like:
+      // "a1b2c3d4-e5f6-7890-abcd-ef1234567890" or "a1b2c3d4e5f678..."
+      const looksLikeUUID = /^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}$/i.test(user.username);
+      if (looksLikeUUID) {
+        logger.info(`Fixing UUID username for user ${user.email}: ${user.username} -> ${jwtPayload.email.split('@')[0]}`);
+        updates.username = jwtPayload.email.split('@')[0];
+      }
+
       user = await dynamodbService.updateUser(user.id, updates);
 
       return user;
