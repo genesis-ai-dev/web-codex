@@ -28,7 +28,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
   // Fetch user from backend when authenticated
   useEffect(() => {
     const fetchUserFromBackend = async () => {
-      if (oidcAuth.isAuthenticated && oidcAuth.user && !isFetchingUser) {
+      if (oidcAuth.isAuthenticated && oidcAuth.user && !isFetchingUser && !backendUser) {
         try {
           setIsFetchingUser(true);
           // Call the backend to get the synced user object
@@ -47,15 +47,16 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
     };
 
     fetchUserFromBackend();
-  }, [oidcAuth.isAuthenticated, oidcAuth.user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oidcAuth.isAuthenticated]);
 
   // Use backend user if available, otherwise fall back to JWT user
   const user: User | null = backendUser || (oidcAuth.user
     ? {
         id: oidcAuth.user.profile.sub || '',
-        username: oidcAuth.user.profile.preferred_username || oidcAuth.user.profile.email || '',
+        username: oidcAuth.user.profile.email?.split('@')[0] || '',
         email: oidcAuth.user.profile.email || '',
-        name: oidcAuth.user.profile.name || oidcAuth.user.profile.email || '',
+        name: oidcAuth.user.profile.name,
         groups: [],
         isAdmin: false,
       }
