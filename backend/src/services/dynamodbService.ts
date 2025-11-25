@@ -444,10 +444,16 @@ class DynamoDBService {
   // Audit log operations
   async createAuditLog(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
     try {
-      const item: AuditLog = {
+      const id = `log_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      const timestamp = new Date().toISOString();
+
+      const item: any = {
+        PK: `AUDIT#${id}`,
+        SK: `AUDIT#${id}`,
+        EntityType: 'AUDIT_LOG',
         ...auditLog,
-        id: `log_${Date.now()}_${Math.random().toString(36).substring(2)}`,
-        timestamp: new Date().toISOString(),
+        id,
+        timestamp,
       };
 
       await this.dynamodb.put({
@@ -455,7 +461,7 @@ class DynamoDBService {
         Item: item,
       }).promise();
 
-      return item;
+      return item as AuditLog;
     } catch (error) {
       logger.error('Failed to create audit log', error);
       // Don't throw error for audit logging failures

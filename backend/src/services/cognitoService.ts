@@ -90,8 +90,8 @@ class CognitoService {
         Username: email,
         UserAttributes: userAttributes,
         TemporaryPassword: temporaryPassword,
-        MessageAction: sendInvite ? MessageActionType.RESEND : MessageActionType.SUPPRESS,
-        DesiredDeliveryMediums: ['EMAIL'],
+        MessageAction: sendInvite ? undefined : MessageActionType.SUPPRESS,
+        DesiredDeliveryMediums: sendInvite ? ['EMAIL'] : undefined,
       });
 
       await this.client!.send(command);
