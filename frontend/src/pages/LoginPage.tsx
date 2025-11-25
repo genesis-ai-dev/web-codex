@@ -39,10 +39,12 @@ export const LoginPage: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-primary-600 rounded-xl flex items-center justify-center">
-            <svg className="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8z" clipRule="evenodd" />
-            </svg>
+          <div className="mx-auto flex justify-center">
+            <img
+              src="/codex-logo-2024.svg"
+              alt="Codex Logo"
+              className="h-16 w-auto"
+            />
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-gray-100">
             Codex Web
