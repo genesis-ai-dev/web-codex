@@ -666,7 +666,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
             onChange={(e) => setFormData({ ...formData, temporaryPassword: e.target.value })}
             required
             placeholder="Minimum 8 characters"
-            helperText="User will be prompted to change this on first login"
+            helpText="User will be prompted to change this on first login"
           />
         </div>
 
