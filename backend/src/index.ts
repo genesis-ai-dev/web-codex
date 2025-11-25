@@ -53,7 +53,7 @@ try {
   // Start listening
   server.listen(port, () => {
     logger.info('=== Server Started Successfully ===');
-    logger.info(`VSCode Platform API server running on port ${port}`);
+    logger.info(`Codex Platform API server running on port ${port}`);
     logger.info(`Environment: ${config.nodeEnv}`);
     logger.info(`Health check available at: http://localhost:${port}/api/health/live`);
     logger.info(`WebSocket endpoint available at: ws://localhost:${port}/api/admin/workspaces/:workspaceId/exec`);

@@ -51,7 +51,7 @@ logger.info('Helmet security middleware configured');
 
 // CORS configuration
 const corsOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://vscode-platform.example.com']
+  ? ['https://codex-platform.example.com']
   : ['http://localhost:3000', 'http://localhost:5173'];
 logger.info('CORS origins:', corsOrigins);
 

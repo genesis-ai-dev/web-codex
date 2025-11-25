@@ -212,7 +212,7 @@ export const WorkspaceDetailsPage: React.FC = () => {
                   onClick={() => workspace.url && window.open(workspace.url, '_blank')}
                   disabled={!workspace.url}
                 >
-                  Open VSCode
+                  Open Codex
                 </Button>
                 <Button
                   variant="ghost"

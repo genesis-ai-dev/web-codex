@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Codex Web is a multi-tenant Kubernetes-based VSCode platform that enables users to create, manage, and access cloud-based development workspaces. The platform consists of a Node.js/Express backend API and a React/TypeScript frontend.
+Codex Web is a multi-tenant Kubernetes-based development platform that enables users to create, manage, and access cloud-based development workspaces. The platform consists of a Node.js/Express backend API and a React/TypeScript frontend.
 
 ## Architecture
 
@@ -117,9 +117,9 @@ All entities stored in one table with pattern:
 
 ### Kubernetes Resource Management
 - Namespace per group: `{KUBERNETES_NAMESPACE_PREFIX}-{groupId}`
-- Each workspace creates a Deployment with VSCode server pod
+- Each workspace creates a Deployment with Codex server pod
 - ResourceQuota per namespace enforces group limits
-- Service for external access to VSCode instances
+- Service for external access to Codex instances
 - RBAC for namespace-level isolation
 
 ### Authentication Middleware
@@ -145,7 +145,7 @@ PORT=3001
 JWT_SECRET=your-secret-key
 AWS_REGION=us-west-2
 DYNAMODB_REGION=us-west-2
-DYNAMODB_TABLE_PREFIX=vscode-platform
+DYNAMODB_TABLE_PREFIX=codex-platform
 REDIS_URL=redis://localhost:6379
 
 # Optional (for local development)
@@ -158,7 +158,7 @@ AWS_COGNITO_CLIENT_ID=xxxxx
 GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 
 # Kubernetes (production)
-KUBERNETES_NAMESPACE_PREFIX=vscode-platform
+KUBERNETES_NAMESPACE_PREFIX=codex-platform
 ```
 
 ### Frontend (.env.local in frontend/)

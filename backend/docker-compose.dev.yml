@@ -15,7 +15,7 @@ services:
       - JWT_SECRET=dev-secret-key-change-in-production
       - AWS_REGION=us-west-2
       - DYNAMODB_REGION=us-west-2
-      - DYNAMODB_TABLE_PREFIX=vscode-platform-dev
+      - DYNAMODB_TABLE_PREFIX=codex-platform-dev
       - REDIS_URL=redis://redis:6379
       - LOG_LEVEL=debug
     volumes:
@@ -26,7 +26,7 @@ services:
       - redis
       - dynamodb-local
     networks:
-      - vscode-platform
+      - codex-platform
 
   # Redis for session management
   redis:
@@ -36,7 +36,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - vscode-platform
+      - codex-platform
 
   # Local DynamoDB for development
   dynamodb-local:
@@ -48,7 +48,7 @@ services:
       - dynamodb_data:/home/dynamodblocal/data
     working_dir: /home/dynamodblocal
     networks:
-      - vscode-platform
+      - codex-platform
 
   # DynamoDB Admin UI
   dynamodb-admin:
@@ -60,12 +60,12 @@ services:
     depends_on:
       - dynamodb-local
     networks:
-      - vscode-platform
+      - codex-platform
 
 volumes:
   redis_data:
   dynamodb_data:
 
 networks:
-  vscode-platform:
+  codex-platform:
     driver: bridge

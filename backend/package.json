@@ -1,7 +1,7 @@
 {
-  "name": "vscode-platform-backend",
+  "name": "codex-platform-backend",
   "version": "1.0.0",
-  "description": "Backend API for multi-tenant Kubernetes VSCode platform",
+  "description": "Backend API for multi-tenant Kubernetes Codex platform",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -18,11 +18,11 @@
   },
   "keywords": [
     "kubernetes",
-    "vscode",
+    "codex",
     "multi-tenant",
     "platform"
   ],
-  "author": "VSCode Platform Team",
+  "author": "Codex Platform Team",
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.515.0",

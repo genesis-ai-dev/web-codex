@@ -10,7 +10,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: vscode-platform-backend
+  name: codex-platform-backend
 rules:
 - apiGroups: [""]
   resources: ["namespaces", "pods", "services", "persistentvolumeclaims", "resourcequotas", "secrets", "configmaps"]
@@ -40,11 +40,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: vscode-platform-backend
+  name: codex-platform-backend
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: vscode-platform-backend
+  name: codex-platform-backend
 subjects:
 - kind: ServiceAccount
   name: backend-api-sa

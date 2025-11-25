@@ -1,6 +1,6 @@
 # Backend Project Structure
 
-This document describes the organization of the VSCode Platform Backend API.
+This document describes the organization of the Codex Platform Backend API.
 
 ## Directory Structure
 

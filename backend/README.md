@@ -1,13 +1,13 @@
-# VSCode Platform Backend API
+# Codex Platform Backend API
 
-A production-ready backend API for a multi-tenant Kubernetes VSCode platform, providing secure workspace management, group-based access control, and integration with AWS services.
+A production-ready backend API for a multi-tenant Kubernetes Codex platform, providing secure workspace management, group-based access control, and integration with AWS services.
 
 
 ## Features
 
 - 🔐 **Multi-provider Authentication**: AWS Cognito and Google OAuth support
 - 🏢 **Multi-tenant Architecture**: Group-based isolation with Kubernetes namespaces
-- 🚀 **Workspace Management**: Create, start, stop, and manage VSCode workspaces
+- 🚀 **Workspace Management**: Create, start, stop, and manage Codex workspaces
 - 📊 **Resource Monitoring**: Real-time metrics and usage tracking
 - 🛡️ **Security**: Rate limiting, input validation, and audit logging
 - ☸️ **Kubernetes Native**: Direct integration with Kubernetes API
@@ -37,7 +37,7 @@ The backend follows a microservices architecture with clear separation of concer
 1. **Clone and install dependencies:**
    ```bash
    git clone <repository>
-   cd vscode-platform-backend
+   cd codex-platform-backend
    npm install
    ```
 
@@ -65,7 +65,7 @@ The backend follows a microservices architecture with clear separation of concer
 
 1. **Build the Docker image:**
    ```bash
-   docker build -t vscode-platform/backend:latest .
+   docker build -t codex-platform/backend:latest .
    ```
 
 2. **Deploy to Kubernetes:**
@@ -78,9 +78,9 @@ The backend follows a microservices architecture with clear separation of concer
    ```bash
    eksctl create iamserviceaccount \
      --cluster=my-cluster \
-     --namespace=vscode-platform \
+     --namespace=codex-platform \
      --name=backend-api-sa \
-     --attach-policy-arn=arn:aws:iam::ACCOUNT:policy/VSCodePlatformBackendPolicy \
+     --attach-policy-arn=arn:aws:iam::ACCOUNT:policy/CodexPlatformBackendPolicy \
      --approve
    ```
 
@@ -97,7 +97,7 @@ The backend follows a microservices architecture with clear separation of concer
 | `AWS_COGNITO_USER_POOL_ID` | Cognito User Pool | Optional |
 | `AWS_COGNITO_CLIENT_ID` | Cognito Client ID | Optional |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client | Optional |
-| `DYNAMODB_TABLE_PREFIX` | DynamoDB table prefix | `vscode-platform` |
+| `DYNAMODB_TABLE_PREFIX` | DynamoDB table prefix | `codex-platform` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
 
 ### DynamoDB Tables
@@ -273,13 +273,13 @@ npm run test:coverage
 curl http://localhost:3001/api/health
 
 # Verify Kubernetes connectivity
-kubectl auth can-i --list --as=system:serviceaccount:vscode-platform:backend-api-sa
+kubectl auth can-i --list --as=system:serviceaccount:codex-platform:backend-api-sa
 
 # Check DynamoDB tables
 aws dynamodb list-tables --region us-west-2
 
 # View application logs
-kubectl logs -f deployment/backend-api -n vscode-platform
+kubectl logs -f deployment/backend-api -n codex-platform
 
 # Check Redis connection
 redis-cli ping
@@ -314,7 +314,7 @@ redis-cli ping
 1. **Create EKS Cluster:**
    ```bash
    eksctl create cluster \
-     --name vscode-platform \
+     --name codex-platform \
      --version 1.27 \
      --region us-west-2 \
      --nodegroup-name workers \
@@ -331,7 +331,7 @@ redis-cli ping
    helm repo add eks https://aws.github.io/eks-charts
    helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
      -n kube-system \
-     --set clusterName=vscode-platform \
+     --set clusterName=codex-platform \
      --set serviceAccount.create=false \
      --set serviceAccount.name=aws-load-balancer-controller
    ```
@@ -340,7 +340,7 @@ redis-cli ping
    ```bash
    # Use AWS CLI or Terraform to create tables
    aws dynamodb create-table \
-     --table-name vscode-platform-users \
+     --table-name codex-platform-users \
      --attribute-definitions \
        AttributeName=id,AttributeType=S \
        AttributeName=email,AttributeType=S \

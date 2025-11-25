@@ -149,7 +149,7 @@ Integration tests use these environment variables:
 - `NODE_ENV=test`
 - `REDIS_URL` - defaults to `redis://localhost:6379`
 - `DYNAMODB_ENDPOINT` - defaults to `http://localhost:8000`
-- `DYNAMODB_TABLE_PREFIX=test-vscode-platform`
+- `DYNAMODB_TABLE_PREFIX=test-codex-platform`
 - `JWT_SECRET` - test JWT secret for token generation
 - `SKIP_K8S_INIT=true` - disables Kubernetes client initialization
 
@@ -258,7 +258,7 @@ To reach the target, focus on:
 ### Integration Tests Failing
 1. Check if DynamoDB Local is running: `curl http://localhost:8000`
 2. Check if Redis is running: `redis-cli ping`
-3. Verify table prefix in environment: `DYNAMODB_TABLE_PREFIX=test-vscode-platform`
+3. Verify table prefix in environment: `DYNAMODB_TABLE_PREFIX=test-codex-platform`
 
 ### Connection Errors
 - Ensure services are accessible on specified ports

@@ -153,7 +153,7 @@ export const WorkspacesPage: React.FC = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No workspaces yet</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-              Create your first workspace to start developing in the browser with full VSCode functionality.
+              Create your first workspace to start developing in the browser with full Codex functionality.
             </p>
             <Button onClick={() => setShowCreateModal(true)}>
               Create Your First Workspace
@@ -295,7 +295,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onAction, onNa
                   onClick={openWorkspace}
                   className="flex-1"
                 >
-                  Open VSCode
+                  Open Codex
                 </Button>
                 <Button
                   size="sm"

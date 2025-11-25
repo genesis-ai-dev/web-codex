@@ -193,8 +193,8 @@ router.post('/',
         if (!namespaceExists) {
           logger.warn(`Namespace ${namespace} does not exist for group ${createRequest.groupId}, creating it now`);
           await kubernetesService.createNamespace(namespace, {
-            'vscode-platform/group-id': createRequest.groupId,
-            'vscode-platform/group-name': group.name,
+            'codex-platform/group-id': createRequest.groupId,
+            'codex-platform/group-name': group.name,
           });
 
           // Create resource quota for the namespace

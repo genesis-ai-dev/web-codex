@@ -6,7 +6,7 @@ A React-based frontend for Codex Web. This application provides a modern, respon
 
 - **Authentication**: Support for AWS Cognito and Google OAuth
 - **Dashboard**: Overview of workspaces and resource usage
-- **Workspace Management**: Create, start, stop, and delete VSCode workspaces
+- **Workspace Management**: Create, start, stop, and delete Codex workspaces
 - **Group Management**: Organize users and workspaces by groups
 - **Admin Panel**: Platform administration and user management
 - **Responsive Design**: Works seamlessly across desktop and mobile devices
@@ -113,7 +113,7 @@ The application includes a comprehensive set of reusable components:
 - Create workspaces with custom resource allocation
 - Start/stop/restart workspace controls
 - Real-time status indicators
-- Direct access to VSCode instances
+- Direct access to Codex instances
 - Resource usage monitoring
 
 ### Responsive Design
