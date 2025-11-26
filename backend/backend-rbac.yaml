@@ -13,7 +13,7 @@ metadata:
   name: codex-platform-backend
 rules:
 - apiGroups: [""]
-  resources: ["namespaces", "pods", "services", "persistentvolumeclaims", "resourcequotas", "secrets", "configmaps"]
+  resources: ["namespaces", "pods", "services", "persistentvolumeclaims", "resourcequotas", "secrets", "configmaps", "nodes"]
   verbs: ["get", "list", "create", "update", "delete", "watch"]
 - apiGroups: [""]
   resources: ["pods/exec", "pods/log"]
