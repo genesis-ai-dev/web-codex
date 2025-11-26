@@ -854,6 +854,132 @@ const MonitoringPlaceholder: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Node Capacity Details */}
+      {clusterCapacity?.nodes && clusterCapacity.nodes.length > 0 && (
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-6">
+              Per-Node Capacity
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {clusterCapacity.nodes.map((node: any, index: number) => (
+                <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4 truncate" title={node.name}>
+                    {node.name}
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    {/* CPU Pie Chart */}
+                    <div className="text-center">
+                      <svg className="w-24 h-24 mx-auto" viewBox="0 0 100 100">
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="20"
+                          className="text-gray-200 dark:text-gray-700"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="20"
+                          strokeDasharray={`${(node.cpuPercentage / 100) * 251.2} 251.2`}
+                          strokeLinecap="round"
+                          transform="rotate(-90 50 50)"
+                          className={
+                            node.cpuPercentage > 80 ? 'text-red-500' :
+                            node.cpuPercentage > 60 ? 'text-yellow-500' :
+                            'text-green-500'
+                          }
+                        />
+                        <text
+                          x="50"
+                          y="50"
+                          textAnchor="middle"
+                          dy="0.3em"
+                          className="text-xs font-semibold fill-gray-900 dark:fill-gray-100"
+                        >
+                          {node.cpuPercentage.toFixed(0)}%
+                        </text>
+                      </svg>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-2">CPU</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {node.usedCpu} / {node.allocatableCpu}
+                      </p>
+                    </div>
+
+                    {/* Memory Pie Chart */}
+                    <div className="text-center">
+                      <svg className="w-24 h-24 mx-auto" viewBox="0 0 100 100">
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="20"
+                          className="text-gray-200 dark:text-gray-700"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="20"
+                          strokeDasharray={`${(node.memoryPercentage / 100) * 251.2} 251.2`}
+                          strokeLinecap="round"
+                          transform="rotate(-90 50 50)"
+                          className={
+                            node.memoryPercentage > 80 ? 'text-red-500' :
+                            node.memoryPercentage > 60 ? 'text-yellow-500' :
+                            'text-green-500'
+                          }
+                        />
+                        <text
+                          x="50"
+                          y="50"
+                          textAnchor="middle"
+                          dy="0.3em"
+                          className="text-xs font-semibold fill-gray-900 dark:fill-gray-100"
+                        >
+                          {node.memoryPercentage.toFixed(0)}%
+                        </text>
+                      </svg>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-2">Memory</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {node.usedMemory} / {node.allocatableMemory}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Available Resources */}
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Available CPU:</span>
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100">{node.availableCpu} cores</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Available Memory:</span>
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100">{node.availableMemory}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Workspace Slots:</span>
+                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{node.workspaceCapacity}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Future Features */}
       <Card>
         <CardContent className="p-6">

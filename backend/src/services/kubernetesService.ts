@@ -1656,6 +1656,18 @@ cert: false`;
 
       // Calculate available capacity on each node
       let totalWorkspaceCapacity = 0;
+      const nodeCapacityDetails: Array<{
+        name: string;
+        allocatableCpu: string;
+        allocatableMemory: string;
+        usedCpu: string;
+        usedMemory: string;
+        availableCpu: string;
+        availableMemory: string;
+        cpuPercentage: number;
+        memoryPercentage: number;
+        workspaceCapacity: number;
+      }> = [];
 
       for (const nodeAlloc of nodeAllocatableResources) {
         const used = nodeUsedResources[nodeAlloc.name] || { cpu: 0, memory: 0 };
@@ -1670,6 +1682,23 @@ cert: false`;
         // The limiting factor determines capacity
         const nodeWorkspaceCapacity = Math.max(0, Math.min(workspacesByCpu, workspacesByMemory));
         totalWorkspaceCapacity += nodeWorkspaceCapacity;
+
+        // Calculate percentages for visualization
+        const cpuPercentage = nodeAlloc.cpu > 0 ? (used.cpu / nodeAlloc.cpu) * 100 : 0;
+        const memoryPercentage = nodeAlloc.memory > 0 ? (used.memory / nodeAlloc.memory) * 100 : 0;
+
+        nodeCapacityDetails.push({
+          name: nodeAlloc.name,
+          allocatableCpu: this.formatQuantity(nodeAlloc.cpu, 'cpu'),
+          allocatableMemory: this.formatQuantity(nodeAlloc.memory, 'memory'),
+          usedCpu: this.formatQuantity(used.cpu, 'cpu'),
+          usedMemory: this.formatQuantity(used.memory, 'memory'),
+          availableCpu: this.formatQuantity(availableCpu, 'cpu'),
+          availableMemory: this.formatQuantity(availableMemory, 'memory'),
+          cpuPercentage: Math.round(cpuPercentage * 10) / 10,
+          memoryPercentage: Math.round(memoryPercentage * 10) / 10,
+          workspaceCapacity: nodeWorkspaceCapacity,
+        });
 
         logger.debug(`Node ${nodeAlloc.name} workspace capacity:`, {
           availableCpu: availableCpu.toFixed(2),
@@ -1692,6 +1721,7 @@ cert: false`;
         usedPods,
         nodeCount: nodes.length,
         availableWorkspaceCapacity: totalWorkspaceCapacity,
+        nodes: nodeCapacityDetails,
       };
 
       logger.info('Cluster capacity calculated:', clusterCapacity);
