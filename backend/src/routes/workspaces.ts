@@ -4,11 +4,12 @@ import { randomBytes } from 'crypto';
 import { authenticate, requireGroupMembership, requireGroupAdmin, isGroupAdmin } from '../middleware/auth';
 import { validate, validateQuery, validateParams, commonSchemas } from '../middleware/validation';
 import { workspaceRateLimit, operationRateLimits } from '../middleware/rateLimiting';
-import { AuthenticatedRequest, WorkspaceStatus, Workspace, CreateWorkspaceRequest, WorkspaceActionRequest } from '../types';
+import { AuthenticatedRequest, WorkspaceStatus, Workspace, CreateWorkspaceRequest, WorkspaceActionRequest, ResourceTier } from '../types';
 import { dynamodbService } from '../services/dynamodbService';
 import { kubernetesService } from '../services/kubernetesService';
 import { logger } from '../config/logger';
 import { NotFoundError, ConflictError, ValidationError, AuthorizationError } from '../utils/errors';
+import { getResourcesForTier } from '../config/resourceTiers';
 
 const router = Router();
 
@@ -151,12 +152,9 @@ router.post('/',
       // Generate secure password for code-server authentication
       const password = generatePassword(24);
 
-      // Default resources if not provided
-      const resources = createRequest.resources || {
-        cpu: '2',
-        memory: '4Gi',
-        storage: '20Gi',
-      };
+      // Determine resources based on tier or custom resources
+      let resources = createRequest.resources ||
+        (createRequest.tier ? getResourcesForTier(createRequest.tier) : getResourcesForTier(ResourceTier.SMALL_TEAM));
 
       // Get default workspace image from system settings if not provided
       let workspaceImage = createRequest.image;

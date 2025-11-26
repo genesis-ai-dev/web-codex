@@ -145,6 +145,12 @@ export const commonSchemas = {
       .messages({
         'string.pattern.base': 'Image must be a valid container image reference (e.g., registry.io/org/image:tag)',
       }),
+    tier: Joi.string()
+      .valid('single-user', 'small-team', 'enterprise')
+      .optional()
+      .messages({
+        'any.only': 'Tier must be one of: single-user, small-team, enterprise',
+      }),
     resources: Joi.object({
       cpu: Joi.string().required(),
       memory: Joi.string().required(),

@@ -137,6 +137,22 @@ The API follows OpenAPI 3.0 specification. Key endpoint groups:
 - `GET /:id/metrics` - Resource usage metrics
 - `GET /:id/logs` - Container logs
 
+#### Workspace Resource Tiers
+
+The platform supports tiered resource configurations for workspaces:
+
+| Tier | CPU | Memory | Storage | Concurrent Users |
+|------|-----|--------|---------|------------------|
+| **Single User** | 1 core | 2GB | 20GB | 1 user |
+| **Small Team** | 2 cores | 4GB | 20GB | 2-4 users |
+| **Enterprise** | Custom | Custom | Custom | 5+ users (contact us) |
+
+**Resource Configuration Details:**
+- **CPU Requests Only**: No CPU limits are set to allow burst performance
+- **Memory Limits = Requests**: Ensures consistent memory allocation
+- **Default Tier**: Small Team (if no tier is specified)
+- **Custom Resources**: Advanced users can override with custom resource specifications
+
 ### Groups (`/api/groups`)
 - `GET /` - List user's groups
 - `POST /` - Create group (admin)

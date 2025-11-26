@@ -487,8 +487,8 @@ cert: false`;
                     memory: resources.memory,
                   },
                   limits: {
-                    cpu: resources.cpu,
-                    memory: resources.memory,
+                    // No CPU limits - only requests
+                    memory: resources.memory, // Memory limit equals memory request
                   },
                 },
                 startupProbe: {

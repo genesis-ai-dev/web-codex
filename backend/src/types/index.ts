@@ -58,6 +58,12 @@ export interface CreateGroupRequest {
 }
 
 // Resource types
+export enum ResourceTier {
+  SINGLE_USER = 'single-user',
+  SMALL_TEAM = 'small-team',
+  ENTERPRISE = 'enterprise',
+}
+
 export interface ResourceQuota {
   cpu: string;
   memory: string;
@@ -123,6 +129,7 @@ export interface CreateWorkspaceRequest {
   groupId: string;
   image?: string;
   resources?: WorkspaceResources;
+  tier?: ResourceTier;
 }
 
 export interface WorkspaceActionRequest {

@@ -8,7 +8,7 @@ import { Modal } from '../components/Modal';
 import { Input, TextArea, Select } from '../components/Input';
 import { Progress } from '../components/Progress';
 import { TerminalModal } from '../components/TerminalModal';
-import { Workspace, Group, CreateWorkspaceRequest } from '../types';
+import { Workspace, Group, CreateWorkspaceRequest, ResourceTier } from '../types';
 import { apiService } from '../services/api';
 import { formatRelativeTime, formatCPU, formatMemory, getErrorMessage } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -385,12 +385,8 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
     name: '',
     description: '',
     groupId: '',
+    tier: ResourceTier.SMALL_TEAM, // Default tier
     // Don't specify image - let backend use system settings default
-    resources: {
-      cpu: '2',
-      memory: '4Gi',
-      storage: '20Gi',
-    },
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -418,12 +414,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
         name: '',
         description: '',
         groupId: '',
-        image: 'ghcr.io/andrewhertog/code-server:0.0.1-alpha.2',
-        resources: {
-          cpu: '2',
-          memory: '4Gi',
-          storage: '20Gi',
-        },
+        tier: ResourceTier.SMALL_TEAM,
       });
     } catch (error) {
       setError(getErrorMessage(error));
@@ -436,6 +427,24 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
     value: group.id,
     label: group.displayName,
   }));
+
+  const tierOptions = [
+    {
+      value: ResourceTier.SINGLE_USER,
+      label: 'Single User - 1 CPU, 2GB RAM',
+      description: 'Perfect for individual developers'
+    },
+    {
+      value: ResourceTier.SMALL_TEAM,
+      label: 'Small Team - 2 CPU, 4GB RAM',
+      description: 'For 2-4 concurrent users'
+    },
+    {
+      value: ResourceTier.ENTERPRISE,
+      label: 'Enterprise - Contact Us',
+      description: 'For larger teams (5+ users)'
+    },
+  ];
 
   return (
     <Modal
@@ -486,36 +495,44 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
           required
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input
-            label="CPU"
-            placeholder="2"
-            value={formData.resources?.cpu || ''}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              resources: { ...prev.resources!, cpu: e.target.value }
-            }))}
-          />
-          
-          <Input
-            label="Memory"
-            placeholder="4Gi"
-            value={formData.resources?.memory || ''}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              resources: { ...prev.resources!, memory: e.target.value }
-            }))}
-          />
-          
-          <Input
-            label="Storage"
-            placeholder="20Gi"
-            value={formData.resources?.storage || ''}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              resources: { ...prev.resources!, storage: e.target.value }
-            }))}
-          />
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Resource Tier
+          </label>
+          <div className="space-y-3">
+            {tierOptions.map((tier) => (
+              <label
+                key={tier.value}
+                className={`flex items-start p-4 border rounded-lg cursor-pointer transition-all ${
+                  formData.tier === tier.value
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tier"
+                  value={tier.value}
+                  checked={formData.tier === tier.value}
+                  onChange={(e) => setFormData(prev => ({ ...prev, tier: e.target.value as ResourceTier }))}
+                  className="mt-1 mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {tier.label}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {tier.description}
+                  </div>
+                  {tier.value === ResourceTier.ENTERPRISE && (
+                    <div className="text-xs text-primary-600 dark:text-primary-400 mt-2">
+                      Note: Please contact us for custom enterprise configurations
+                    </div>
+                  )}
+                </div>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="flex justify-end space-x-3 pt-6 border-t">

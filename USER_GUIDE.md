@@ -76,13 +76,25 @@ Workspaces are your cloud-based development environments, each running a full in
    - **Workspace Name**: A descriptive name (e.g., "My Development Environment")
    - **Description**: Optional description of the workspace purpose
    - **Group**: Select which group this workspace belongs to
-   - **Resources**: Configure allocated resources
-     - **CPU**: Number of CPU cores (e.g., "2")
-     - **Memory**: RAM allocation (e.g., "4Gi" for 4 gigabytes)
-     - **Storage**: Disk space (e.g., "20Gi" for 20 gigabytes)
+   - **Resource Tier**: Select the appropriate tier based on your usage:
+     - **Single User** (1 CPU, 2GB RAM): Perfect for individual developers working on personal projects
+     - **Small Team** (2 CPU, 4GB RAM): For 2-4 concurrent users collaborating on projects
+     - **Enterprise** (Contact Us): For larger teams with 5+ concurrent users - requires custom configuration
 4. Click **Create Workspace**
 
 The workspace will begin provisioning. This may take a few moments.
+
+#### Resource Tier Details
+
+**Resource Configuration:**
+- **CPU**: Only CPU requests are set (no limits) for optimal burst performance
+- **Memory**: Memory limits equal memory requests to ensure consistent performance
+- **Storage**: All tiers include 20GB of persistent storage
+
+**Choosing the Right Tier:**
+- **Single User**: Best for individual development, testing, or learning
+- **Small Team**: Recommended for small collaborative teams or medium-complexity projects
+- **Enterprise**: Contact us for custom resource configurations for larger teams or high-performance requirements
 
 ### Starting a Workspace
 

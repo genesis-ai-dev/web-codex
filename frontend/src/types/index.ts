@@ -29,6 +29,12 @@ export interface Group {
   createdAt: string;
 }
 
+export enum ResourceTier {
+  SINGLE_USER = 'single-user',
+  SMALL_TEAM = 'small-team',
+  ENTERPRISE = 'enterprise',
+}
+
 export interface ResourceQuota {
   cpu: string;
   memory: string;
@@ -89,6 +95,7 @@ export interface CreateWorkspaceRequest {
   description?: string;
   groupId: string;
   image?: string;
+  tier?: ResourceTier;
   resources?: {
     cpu: string;
     memory: string;
