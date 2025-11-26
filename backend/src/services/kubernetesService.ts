@@ -1580,6 +1580,9 @@ cert: false`;
       let allocatableMemory = 0;
       let allocatablePods = 0;
 
+      // Track per-node allocatable resources for workspace capacity calculation
+      const nodeAllocatableResources: Array<{ cpu: number; memory: number; name: string }> = [];
+
       // Sum up capacity and allocatable resources from all nodes
       for (const node of nodes) {
         const capacity = node.status?.capacity || {};
@@ -1589,15 +1592,27 @@ cert: false`;
         totalMemory += this.parseKubernetesQuantity(capacity.memory || '0', 'memory');
         totalPods += parseInt(capacity.pods || '0');
 
-        allocatableCpu += this.parseKubernetesQuantity(allocatable.cpu || '0', 'cpu');
-        allocatableMemory += this.parseKubernetesQuantity(allocatable.memory || '0', 'memory');
+        const nodeCpu = this.parseKubernetesQuantity(allocatable.cpu || '0', 'cpu');
+        const nodeMemory = this.parseKubernetesQuantity(allocatable.memory || '0', 'memory');
+
+        allocatableCpu += nodeCpu;
+        allocatableMemory += nodeMemory;
         allocatablePods += parseInt(allocatable.pods || '0');
+
+        nodeAllocatableResources.push({
+          cpu: nodeCpu,
+          memory: nodeMemory,
+          name: node.metadata?.name || `node-${nodeAllocatableResources.length}`,
+        });
       }
 
-      // Get all pods to calculate used resources
+      // Get all pods to calculate used resources per node
       let usedCpu = 0;
       let usedMemory = 0;
       let usedPods = 0;
+
+      // Track used resources per node
+      const nodeUsedResources: Record<string, { cpu: number; memory: number }> = {};
 
       try {
         const podsResponse = await this.coreV1Api.listPodForAllNamespaces();
@@ -1608,16 +1623,61 @@ cert: false`;
         // Sum up requested resources from all containers in all pods
         for (const pod of pods) {
           if (pod.status?.phase === 'Running' || pod.status?.phase === 'Pending') {
+            const nodeName = pod.spec?.nodeName || 'unassigned';
+
+            if (!nodeUsedResources[nodeName]) {
+              nodeUsedResources[nodeName] = { cpu: 0, memory: 0 };
+            }
+
             for (const container of pod.spec?.containers || []) {
               const requests = container.resources?.requests || {};
-              usedCpu += this.parseKubernetesQuantity(requests.cpu || '0', 'cpu');
-              usedMemory += this.parseKubernetesQuantity(requests.memory || '0', 'memory');
+              const containerCpu = this.parseKubernetesQuantity(requests.cpu || '0', 'cpu');
+              const containerMemory = this.parseKubernetesQuantity(requests.memory || '0', 'memory');
+
+              usedCpu += containerCpu;
+              usedMemory += containerMemory;
+
+              if (nodeName !== 'unassigned') {
+                nodeUsedResources[nodeName].cpu += containerCpu;
+                nodeUsedResources[nodeName].memory += containerMemory;
+              }
             }
           }
         }
       } catch (error) {
         logger.warn('Failed to get pod metrics for cluster capacity calculation:', error);
         // Continue with zero usage if we can't get pod metrics
+      }
+
+      // Calculate workspace capacity
+      // Assuming default workspace tier (SMALL_TEAM: 2 CPU, 4Gi memory)
+      const workspaceCpuRequest = 2; // cores
+      const workspaceMemoryRequest = 4 * 1024 * 1024 * 1024; // 4GiB in bytes
+
+      // Calculate available capacity on each node
+      let totalWorkspaceCapacity = 0;
+
+      for (const nodeAlloc of nodeAllocatableResources) {
+        const used = nodeUsedResources[nodeAlloc.name] || { cpu: 0, memory: 0 };
+
+        const availableCpu = nodeAlloc.cpu - used.cpu;
+        const availableMemory = nodeAlloc.memory - used.memory;
+
+        // Calculate how many workspaces can fit based on CPU and memory constraints
+        const workspacesByCpu = Math.floor(availableCpu / workspaceCpuRequest);
+        const workspacesByMemory = Math.floor(availableMemory / workspaceMemoryRequest);
+
+        // The limiting factor determines capacity
+        const nodeWorkspaceCapacity = Math.max(0, Math.min(workspacesByCpu, workspacesByMemory));
+        totalWorkspaceCapacity += nodeWorkspaceCapacity;
+
+        logger.debug(`Node ${nodeAlloc.name} workspace capacity:`, {
+          availableCpu: availableCpu.toFixed(2),
+          availableMemory: this.formatQuantity(availableMemory, 'memory'),
+          workspacesByCpu,
+          workspacesByMemory,
+          capacity: nodeWorkspaceCapacity,
+        });
       }
 
       const clusterCapacity = {
@@ -1631,6 +1691,7 @@ cert: false`;
         usedMemory: this.formatQuantity(usedMemory, 'memory'),
         usedPods,
         nodeCount: nodes.length,
+        availableWorkspaceCapacity: totalWorkspaceCapacity,
       };
 
       logger.info('Cluster capacity calculated:', clusterCapacity);

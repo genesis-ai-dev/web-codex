@@ -218,6 +218,7 @@ export interface ClusterCapacity {
   usedMemory: string;
   usedPods: number;
   nodeCount: number;
+  availableWorkspaceCapacity: number;
 }
 
 // AWS/Database types

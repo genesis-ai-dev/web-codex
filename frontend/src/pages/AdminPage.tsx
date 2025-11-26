@@ -700,7 +700,7 @@ const MonitoringPlaceholder: React.FC = () => {
       </div>
 
       {/* Cluster Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -760,6 +760,23 @@ const MonitoringPlaceholder: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Pods</p>
                 <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{clusterCapacity?.allocatablePods || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Available Workspace Slots</p>
+                <p className="text-2xl font-semibold text-indigo-900 dark:text-indigo-100">{clusterCapacity?.availableWorkspaceCapacity || 0}</p>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Small Team tier (2 CPU, 4Gi)</p>
               </div>
             </div>
           </CardContent>
