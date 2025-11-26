@@ -318,6 +318,12 @@ class ApiService {
     return response.data;
   }
 
+  // Admin: Get cluster capacity
+  async getClusterCapacity(): Promise<any> {
+    const response = await this.client.get('/admin/cluster/capacity');
+    return response.data;
+  }
+
   // Health check
   async getHealth(): Promise<{ status: string; timestamp: string }> {
     const response = await this.client.get('/health');

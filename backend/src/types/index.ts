@@ -201,6 +201,25 @@ export interface ComponentHealthStatus {
   details: any;
 }
 
+export interface NodeCapacity {
+  cpu: string;
+  memory: string;
+  pods: string;
+}
+
+export interface ClusterCapacity {
+  totalCpu: string;
+  totalMemory: string;
+  totalPods: number;
+  allocatableCpu: string;
+  allocatableMemory: string;
+  allocatablePods: number;
+  usedCpu: string;
+  usedMemory: string;
+  usedPods: number;
+  nodeCount: number;
+}
+
 // AWS/Database types
 export interface DynamoDBItem {
   [key: string]: any;

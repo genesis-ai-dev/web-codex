@@ -617,33 +617,245 @@ const SettingsPlaceholder: React.FC = () => {
 };
 
 const MonitoringPlaceholder: React.FC = () => {
+  const [clusterCapacity, setClusterCapacity] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    loadClusterCapacity();
+  }, []);
+
+  const loadClusterCapacity = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await require('../services/api').apiService.getClusterCapacity();
+      setClusterCapacity(data);
+    } catch (err: any) {
+      console.error('Failed to load cluster capacity:', err);
+      setError(err?.message || 'Failed to load cluster capacity');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculatePercentage = (used: string, available: string): number => {
+    // Parse values (e.g., "2.50" cores or "16.00Gi" memory)
+    const parseValue = (val: string): number => {
+      const num = parseFloat(val.replace(/[^0-9.]/g, ''));
+      return isNaN(num) ? 0 : num;
+    };
+
+    const usedNum = parseValue(used);
+    const availableNum = parseValue(available);
+
+    if (availableNum === 0) return 0;
+    return (usedNum / availableNum) * 100;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+          <p className="text-gray-500 dark:text-gray-400">Loading cluster capacity...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="max-w-2xl">
+        <CardContent className="text-center py-12">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Error Loading Cluster Data</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadClusterCapacity}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            Try Again
+          </button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const cpuPercentage = clusterCapacity ? calculatePercentage(clusterCapacity.usedCpu, clusterCapacity.allocatableCpu) : 0;
+  const memoryPercentage = clusterCapacity ? calculatePercentage(clusterCapacity.usedMemory, clusterCapacity.allocatableMemory) : 0;
+  const podsPercentage = clusterCapacity ? (clusterCapacity.usedPods / clusterCapacity.allocatablePods) * 100 : 0;
+
   return (
-    <Card className="max-w-2xl">
-      <CardContent className="text-center py-12">
-        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-          System Monitoring
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Monitor platform health, resource usage, and performance metrics across all workspaces and namespaces.
+    <div className="max-w-6xl">
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">System Monitoring</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Monitor cluster capacity and resource utilization
         </p>
-        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-          <p className="font-medium">Planned features:</p>
-          <ul className="text-left max-w-md mx-auto space-y-1">
-            <li>• Real-time resource usage dashboards</li>
-            <li>• CPU, memory, and storage utilization by group</li>
-            <li>• Active workspace count and status</li>
-            <li>• Kubernetes cluster health metrics</li>
-            <li>• Pod status and deployment monitoring</li>
-            <li>• Historical usage trends and graphs</li>
-            <li>• Alerting for quota limits and resource constraints</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Cluster Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Cluster Nodes</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{clusterCapacity?.nodeCount || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total CPU</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{clusterCapacity?.allocatableCpu || '0'} cores</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Memory</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{clusterCapacity?.allocatableMemory || '0'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Pods</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{clusterCapacity?.allocatablePods || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Resource Utilization */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Resource Utilization
+          </h3>
+
+          <div className="space-y-6">
+            {/* CPU Usage */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">CPU</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {clusterCapacity?.usedCpu || '0'} / {clusterCapacity?.allocatableCpu || '0'} cores ({cpuPercentage.toFixed(1)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full ${
+                    cpuPercentage > 80 ? 'bg-red-500' :
+                    cpuPercentage > 60 ? 'bg-yellow-500' :
+                    'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(cpuPercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Memory Usage */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Memory</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {clusterCapacity?.usedMemory || '0'} / {clusterCapacity?.allocatableMemory || '0'} ({memoryPercentage.toFixed(1)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full ${
+                    memoryPercentage > 80 ? 'bg-red-500' :
+                    memoryPercentage > 60 ? 'bg-yellow-500' :
+                    'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(memoryPercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Pods Usage */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Pods</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {clusterCapacity?.usedPods || 0} / {clusterCapacity?.allocatablePods || 0} ({podsPercentage.toFixed(1)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full ${
+                    podsPercentage > 80 ? 'bg-red-500' :
+                    podsPercentage > 60 ? 'bg-yellow-500' :
+                    'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(podsPercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Future Features */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Additional Monitoring Features
+          </h3>
+          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+            <p className="font-medium">Coming soon:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Real-time resource usage dashboards</li>
+              <li>CPU, memory, and storage utilization by group</li>
+              <li>Active workspace count and status</li>
+              <li>Pod status and deployment monitoring</li>
+              <li>Historical usage trends and graphs</li>
+              <li>Alerting for quota limits and resource constraints</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };

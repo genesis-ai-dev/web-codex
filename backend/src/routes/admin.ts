@@ -984,4 +984,15 @@ router.patch('/settings',
   }
 );
 
+// Get cluster capacity
+router.get('/cluster/capacity', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const capacity = await kubernetesService.getClusterCapacity();
+    res.json(capacity);
+  } catch (error) {
+    logger.error('Failed to get cluster capacity:', error);
+    throw error;
+  }
+});
+
 export default router;

@@ -1521,6 +1521,125 @@ cert: false`;
 
     return `${bytes}`;
   }
+
+  // Parse Kubernetes resource quantities (e.g., "1000m" = 1 CPU, "2Gi" = 2GiB)
+  private parseKubernetesQuantity(quantity: string, type: 'cpu' | 'memory'): number {
+    if (!quantity) return 0;
+
+    if (type === 'cpu') {
+      // CPU can be in cores or millicores (m)
+      if (quantity.endsWith('m')) {
+        return parseInt(quantity.slice(0, -1)) / 1000; // Convert millicores to cores
+      }
+      return parseFloat(quantity); // Already in cores
+    } else {
+      // Memory can be in Ki, Mi, Gi, Ti, Pi, Ei or K, M, G, T, P, E
+      const units: { [key: string]: number } = {
+        'Ki': 1024,
+        'Mi': 1024 * 1024,
+        'Gi': 1024 * 1024 * 1024,
+        'Ti': 1024 * 1024 * 1024 * 1024,
+        'K': 1000,
+        'M': 1000 * 1000,
+        'G': 1000 * 1000 * 1000,
+        'T': 1000 * 1000 * 1000 * 1000,
+      };
+
+      for (const [suffix, multiplier] of Object.entries(units)) {
+        if (quantity.endsWith(suffix)) {
+          return parseFloat(quantity.slice(0, -suffix.length)) * multiplier;
+        }
+      }
+
+      return parseFloat(quantity); // Plain bytes
+    }
+  }
+
+  // Format number as Kubernetes quantity string
+  private formatQuantity(value: number, type: 'cpu' | 'memory'): string {
+    if (type === 'cpu') {
+      // Return in cores with 2 decimal places
+      return value.toFixed(2);
+    } else {
+      // Return in GiB for memory
+      const gib = value / (1024 * 1024 * 1024);
+      return `${gib.toFixed(2)}Gi`;
+    }
+  }
+
+  async getClusterCapacity(): Promise<any> {
+    try {
+      // Get all nodes in the cluster
+      const nodesResponse = await this.coreV1Api.listNode();
+      const nodes = nodesResponse.items;
+
+      let totalCpu = 0;
+      let totalMemory = 0;
+      let totalPods = 0;
+      let allocatableCpu = 0;
+      let allocatableMemory = 0;
+      let allocatablePods = 0;
+
+      // Sum up capacity and allocatable resources from all nodes
+      for (const node of nodes) {
+        const capacity = node.status?.capacity || {};
+        const allocatable = node.status?.allocatable || {};
+
+        totalCpu += this.parseKubernetesQuantity(capacity.cpu || '0', 'cpu');
+        totalMemory += this.parseKubernetesQuantity(capacity.memory || '0', 'memory');
+        totalPods += parseInt(capacity.pods || '0');
+
+        allocatableCpu += this.parseKubernetesQuantity(allocatable.cpu || '0', 'cpu');
+        allocatableMemory += this.parseKubernetesQuantity(allocatable.memory || '0', 'memory');
+        allocatablePods += parseInt(allocatable.pods || '0');
+      }
+
+      // Get all pods to calculate used resources
+      let usedCpu = 0;
+      let usedMemory = 0;
+      let usedPods = 0;
+
+      try {
+        const podsResponse = await this.coreV1Api.listPodForAllNamespaces();
+        const pods = podsResponse.items;
+
+        usedPods = pods.filter(pod => pod.status?.phase === 'Running' || pod.status?.phase === 'Pending').length;
+
+        // Sum up requested resources from all containers in all pods
+        for (const pod of pods) {
+          if (pod.status?.phase === 'Running' || pod.status?.phase === 'Pending') {
+            for (const container of pod.spec?.containers || []) {
+              const requests = container.resources?.requests || {};
+              usedCpu += this.parseKubernetesQuantity(requests.cpu || '0', 'cpu');
+              usedMemory += this.parseKubernetesQuantity(requests.memory || '0', 'memory');
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to get pod metrics for cluster capacity calculation:', error);
+        // Continue with zero usage if we can't get pod metrics
+      }
+
+      const clusterCapacity = {
+        totalCpu: this.formatQuantity(totalCpu, 'cpu'),
+        totalMemory: this.formatQuantity(totalMemory, 'memory'),
+        totalPods,
+        allocatableCpu: this.formatQuantity(allocatableCpu, 'cpu'),
+        allocatableMemory: this.formatQuantity(allocatableMemory, 'memory'),
+        allocatablePods,
+        usedCpu: this.formatQuantity(usedCpu, 'cpu'),
+        usedMemory: this.formatQuantity(usedMemory, 'memory'),
+        usedPods,
+        nodeCount: nodes.length,
+      };
+
+      logger.info('Cluster capacity calculated:', clusterCapacity);
+      return clusterCapacity;
+    } catch (error) {
+      logger.error('Failed to get cluster capacity:', error);
+      throw new KubernetesError('Failed to get cluster capacity', error);
+    }
+  }
 }
 
 export const kubernetesService = new KubernetesService();
