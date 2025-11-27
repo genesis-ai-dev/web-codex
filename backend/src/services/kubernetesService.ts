@@ -181,7 +181,6 @@ class KubernetesService {
             hard: {
               'requests.cpu': quota.cpu,
               'requests.memory': quota.memory,
-              'limits.cpu': quota.cpu,
               'limits.memory': quota.memory,
               'persistentvolumeclaims': quota.storage,
               pods: quota.pods.toString(),
