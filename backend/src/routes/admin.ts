@@ -7,6 +7,7 @@ import { dynamodbService } from '../services/dynamodbService';
 import { kubernetesService } from '../services/kubernetesService';
 import { userService } from '../services/userService';
 import { cognitoService } from '../services/cognitoService';
+import { costService } from '../services/costService';
 import { logger } from '../config/logger';
 import { NotFoundError, ValidationError } from '../utils/errors';
 import { v4 as uuidv4 } from 'uuid';
@@ -991,6 +992,40 @@ router.get('/cluster/capacity', async (req: AuthenticatedRequest, res: Response)
     res.json(capacity);
   } catch (error) {
     logger.error('Failed to get cluster capacity:', error);
+    throw error;
+  }
+});
+
+// Get workspace cost breakdown
+router.get('/workspaces/:workspaceId/cost',
+  validateParams(commonSchemas.workspaceId),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+
+      const workspace = await dynamodbService.getWorkspace(workspaceId);
+      if (!workspace) {
+        throw new NotFoundError('Workspace not found');
+      }
+
+      // Calculate cost breakdown with estimated usage
+      const costBreakdown = costService.calculateWorkspaceCostWithUsage(workspace);
+
+      res.json(costBreakdown);
+    } catch (error) {
+      logger.error(`Failed to get cost breakdown for workspace ${req.params.workspaceId}:`, error);
+      throw error;
+    }
+  }
+);
+
+// Get pricing configuration
+router.get('/pricing/config', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const pricingConfig = costService.loadPricingConfig();
+    res.json(pricingConfig);
+  } catch (error) {
+    logger.error('Failed to get pricing configuration:', error);
     throw error;
   }
 });

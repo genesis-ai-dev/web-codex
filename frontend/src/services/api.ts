@@ -324,6 +324,18 @@ class ApiService {
     return response.data;
   }
 
+  // Admin: Get workspace cost breakdown
+  async getWorkspaceCostBreakdown(workspaceId: string): Promise<any> {
+    const response = await this.client.get(`/admin/workspaces/${workspaceId}/cost`);
+    return response.data;
+  }
+
+  // Admin: Get pricing configuration
+  async getPricingConfig(): Promise<any> {
+    const response = await this.client.get('/admin/pricing/config');
+    return response.data;
+  }
+
   // Health check
   async getHealth(): Promise<{ status: string; timestamp: string }> {
     const response = await this.client.get('/health');

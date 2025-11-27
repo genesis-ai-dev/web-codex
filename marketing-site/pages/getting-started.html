@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Codex Web</title>
+    <meta name="description" content="Get started with Codex Web in minutes. Create your first cloud development workspace.">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
+                    <path d="M8 16L14 10L20 16L14 22L8 16Z" fill="white"/>
+                    <path d="M14 10L20 16L26 10L20 4L14 10Z" fill="white" opacity="0.7"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+                            <stop offset="0%" stop-color="#667eea"/>
+                            <stop offset="100%" stop-color="#764ba2"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span>Codex Web</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html#features">Features</a></li>
+                <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="#docs">Documentation</a></li>
+                <li><a href="getting-started.html">Get Started</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="#login" class="btn btn-ghost">Sign In</a>
+                <a href="#signup" class="btn btn-primary">Start Free Trial</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="docs-container">
+        <aside class="docs-sidebar">
+            <nav class="docs-nav">
+                <div class="docs-nav-section">
+                    <h4>Getting Started</h4>
+                    <ul>
+                        <li><a href="#quick-start" class="active">Quick Start</a></li>
+                        <li><a href="#installation">Installation</a></li>
+                        <li><a href="#authentication">Authentication</a></li>
+                        <li><a href="#first-workspace">First Workspace</a></li>
+                    </ul>
+                </div>
+                <div class="docs-nav-section">
+                    <h4>Core Concepts</h4>
+                    <ul>
+                        <li><a href="#workspaces">Workspaces</a></li>
+                        <li><a href="#groups">Groups & Teams</a></li>
+                        <li><a href="#resources">Resource Tiers</a></li>
+                        <li><a href="#monitoring">Monitoring</a></li>
+                    </ul>
+                </div>
+                <div class="docs-nav-section">
+                    <h4>API Reference</h4>
+                    <ul>
+                        <li><a href="#api-authentication">Authentication</a></li>
+                        <li><a href="#api-workspaces">Workspaces API</a></li>
+                        <li><a href="#api-groups">Groups API</a></li>
+                        <li><a href="#api-errors">Error Handling</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <article class="docs-content">
+            <header class="docs-header">
+                <h1>Getting Started with Codex Web</h1>
+                <p class="docs-lead">Create your first cloud development workspace in minutes</p>
+            </header>
+
+            <section id="quick-start" class="docs-section">
+                <h2>Quick Start</h2>
+                <p>Get up and running with Codex Web in 3 simple steps:</p>
+
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Sign Up</h3>
+                            <p>Create your account using Google OAuth or AWS Cognito. No credit card required for the free trial.</p>
+                            <a href="#signup" class="btn btn-primary">Create Account</a>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Create a Workspace</h3>
+                            <p>Choose your resource tier and create your first development workspace.</p>
+                            <div class="code-block">
+                                <pre><code>curl -X POST https://api.codexweb.dev/api/workspaces \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-first-workspace",
+    "tier": "team",
+    "groupId": "YOUR_GROUP_ID"
+  }'</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Start Coding</h3>
+                            <p>Access your workspace through the web interface or connect via SSH. Your workspace will be ready in under 30 seconds.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="installation" class="docs-section">
+                <h2>Installation</h2>
+                <p>Install the Codex CLI for easier workspace management:</p>
+
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="npm">npm</button>
+                    <button class="tab-button" data-tab="yarn">Yarn</button>
+                    <button class="tab-button" data-tab="brew">Homebrew</button>
+                </div>
+
+                <div class="tab-content active" data-tab="npm">
+                    <div class="code-block">
+                        <pre><code>npm install -g @codex/cli</code></pre>
+                    </div>
+                </div>
+
+                <div class="tab-content" data-tab="yarn">
+                    <div class="code-block">
+                        <pre><code>yarn global add @codex/cli</code></pre>
+                    </div>
+                </div>
+
+                <div class="tab-content" data-tab="brew">
+                    <div class="code-block">
+                        <pre><code>brew install codex-cli</code></pre>
+                    </div>
+                </div>
+
+                <p>Verify the installation:</p>
+                <div class="code-block">
+                    <pre><code>codex --version
+# codex version 1.0.0</code></pre>
+                </div>
+            </section>
+
+            <section id="authentication" class="docs-section">
+                <h2>Authentication</h2>
+                <p>Codex Web supports multiple authentication providers:</p>
+
+                <div class="info-box">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 8V12M12 16H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <div>
+                        <strong>Supported Providers</strong>
+                        <p>Google OAuth, AWS Cognito, or email/password authentication</p>
+                    </div>
+                </div>
+
+                <h3>Using the CLI</h3>
+                <div class="code-block">
+                    <pre><code>codex login
+
+# Follow the browser prompt to authenticate
+# Your token will be stored securely in ~/.codex/credentials</code></pre>
+                </div>
+
+                <h3>Using API Tokens</h3>
+                <p>For programmatic access, generate an API token from your dashboard:</p>
+                <div class="code-block">
+                    <pre><code>export CODEX_API_KEY="your-api-key-here"
+
+# Use in API requests
+curl -H "Authorization: Bearer $CODEX_API_KEY" \
+  https://api.codexweb.dev/api/workspaces</code></pre>
+                </div>
+            </section>
+
+            <section id="first-workspace" class="docs-section">
+                <h2>Creating Your First Workspace</h2>
+                <p>Workspaces are isolated development environments running in Kubernetes containers.</p>
+
+                <h3>Using the CLI</h3>
+                <div class="code-block">
+                    <pre><code>codex workspace create my-project \
+  --tier team \
+  --template node-typescript
+
+# Workspace created successfully!
+# URL: https://my-project-abc123.codexweb.dev
+# Status: Running</code></pre>
+                </div>
+
+                <h3>Using the API</h3>
+                <div class="code-block">
+                    <pre><code>POST /api/workspaces
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN
+
+{
+  "name": "my-project",
+  "tier": "team",
+  "groupId": "group-123",
+  "template": "node-typescript"
+}</code></pre>
+                </div>
+
+                <div class="success-box">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <div>
+                        <strong>Workspace Ready!</strong>
+                        <p>Your workspace is now accessible at the provided URL. You can start coding immediately.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="workspaces" class="docs-section">
+                <h2>Understanding Workspaces</h2>
+                <p>Workspaces are the core of Codex Web. Each workspace provides:</p>
+
+                <ul class="feature-list">
+                    <li>Isolated development environment</li>
+                    <li>Dedicated compute resources (CPU, RAM)</li>
+                    <li>Persistent storage for your code</li>
+                    <li>Pre-configured development tools</li>
+                    <li>Web-based IDE access</li>
+                    <li>SSH and VS Code Remote support</li>
+                </ul>
+
+                <h3>Workspace Actions</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>CLI Command</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>start</code></td>
+                            <td>Start a stopped workspace</td>
+                            <td><code>codex workspace start &lt;id&gt;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>stop</code></td>
+                            <td>Stop a running workspace</td>
+                            <td><code>codex workspace stop &lt;id&gt;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>restart</code></td>
+                            <td>Restart a workspace</td>
+                            <td><code>codex workspace restart &lt;id&gt;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>delete</code></td>
+                            <td>Permanently delete a workspace</td>
+                            <td><code>codex workspace delete &lt;id&gt;</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="resources" class="docs-section">
+                <h2>Resource Tiers</h2>
+                <p>Choose the right resource tier for your workload:</p>
+
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>CPU</th>
+                            <th>Memory</th>
+                            <th>Storage</th>
+                            <th>Best For</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Single User</strong></td>
+                            <td>1 core</td>
+                            <td>2GB</td>
+                            <td>20GB</td>
+                            <td>Individual projects, learning</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Small Team</strong></td>
+                            <td>2 cores</td>
+                            <td>4GB</td>
+                            <td>20GB</td>
+                            <td>Team collaboration, medium projects</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Enterprise</strong></td>
+                            <td>Custom</td>
+                            <td>Custom</td>
+                            <td>Custom</td>
+                            <td>Large-scale applications, high-performance needs</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="warning-box">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L2 22H22L12 2Z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 9V13M12 17H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <div>
+                        <strong>Resource Management</strong>
+                        <p>CPU requests are guaranteed, but no limits are set to allow burst performance. Memory limits equal requests for consistency.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="monitoring" class="docs-section">
+                <h2>Monitoring & Metrics</h2>
+                <p>Track your workspace resource usage in real-time:</p>
+
+                <h3>View Metrics</h3>
+                <div class="code-block">
+                    <pre><code>codex workspace metrics my-workspace
+
+# CPU Usage: 45% (0.9 cores)
+# Memory Usage: 1.2GB / 4GB (30%)
+# Storage Usage: 8.5GB / 20GB (42%)
+# Uptime: 3 days, 14 hours</code></pre>
+                </div>
+
+                <h3>API Endpoint</h3>
+                <div class="code-block">
+                    <pre><code>GET /api/workspaces/:id/metrics
+
+{
+  "cpu": {
+    "usage": 0.9,
+    "percentage": 45
+  },
+  "memory": {
+    "used": "1.2GB",
+    "total": "4GB",
+    "percentage": 30
+  },
+  "storage": {
+    "used": "8.5GB",
+    "total": "20GB",
+    "percentage": 42
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <section id="api-workspaces" class="docs-section">
+                <h2>Workspaces API Reference</h2>
+
+                <h3>List Workspaces</h3>
+                <div class="api-endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/workspaces</code>
+                </div>
+                <p>Returns all workspaces for the authenticated user.</p>
+
+                <h3>Create Workspace</h3>
+                <div class="api-endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/workspaces</code>
+                </div>
+                <p>Creates a new workspace with the specified configuration.</p>
+
+                <h4>Request Body</h4>
+                <div class="code-block">
+                    <pre><code>{
+  "name": "string",           // Required: Workspace name
+  "tier": "string",           // Optional: single|team|enterprise
+  "groupId": "string",        // Required: Group ID
+  "template": "string",       // Optional: Template name
+  "resources": {              // Optional: Custom resources
+    "cpu": "2",
+    "memory": "4Gi",
+    "storage": "20Gi"
+  }
+}</code></pre>
+                </div>
+
+                <h3>Get Workspace</h3>
+                <div class="api-endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/workspaces/:id</code>
+                </div>
+
+                <h3>Update Workspace</h3>
+                <div class="api-endpoint">
+                    <span class="method put">PUT</span>
+                    <code>/api/workspaces/:id</code>
+                </div>
+
+                <h3>Delete Workspace</h3>
+                <div class="api-endpoint">
+                    <span class="method delete">DELETE</span>
+                    <code>/api/workspaces/:id</code>
+                </div>
+
+                <h3>Workspace Actions</h3>
+                <div class="api-endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/workspaces/:id/actions</code>
+                </div>
+                <div class="code-block">
+                    <pre><code>{
+  "action": "start" | "stop" | "restart"
+}</code></pre>
+                </div>
+            </section>
+
+            <section id="api-errors" class="docs-section">
+                <h2>Error Handling</h2>
+                <p>The API uses standard HTTP status codes and returns errors in this format:</p>
+
+                <div class="code-block">
+                    <pre><code>{
+  "error": {
+    "code": "WORKSPACE_NOT_FOUND",
+    "message": "Workspace with ID 'abc123' not found",
+    "statusCode": 404
+  }
+}</code></pre>
+                </div>
+
+                <h3>Common Error Codes</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>UNAUTHORIZED</code></td>
+                            <td>401</td>
+                            <td>Invalid or missing authentication token</td>
+                        </tr>
+                        <tr>
+                            <td><code>FORBIDDEN</code></td>
+                            <td>403</td>
+                            <td>Insufficient permissions for this resource</td>
+                        </tr>
+                        <tr>
+                            <td><code>NOT_FOUND</code></td>
+                            <td>404</td>
+                            <td>Resource not found</td>
+                        </tr>
+                        <tr>
+                            <td><code>VALIDATION_ERROR</code></td>
+                            <td>400</td>
+                            <td>Invalid request parameters</td>
+                        </tr>
+                        <tr>
+                            <td><code>RATE_LIMIT_EXCEEDED</code></td>
+                            <td>429</td>
+                            <td>Too many requests</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <footer class="docs-footer">
+                <div class="docs-footer-nav">
+                    <a href="../index.html" class="btn btn-outline">← Back to Home</a>
+                    <a href="#" class="btn btn-primary">Next: Advanced Topics →</a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/docs.js"></script>
+</body>
+</html>

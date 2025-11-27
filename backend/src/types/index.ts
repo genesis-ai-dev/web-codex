@@ -221,6 +221,50 @@ export interface ClusterCapacity {
   availableWorkspaceCapacity: number;
 }
 
+// Cost calculation types
+export interface PricingConfig {
+  cpuCorePerMonth: number;
+  memoryGiBPerMonth: number;
+  storageGiBPerMonth: number;
+  clusterOverheadRate: number;
+  networkOverheadRate: number;
+}
+
+export interface WorkspaceCostBreakdown {
+  workspaceId: string;
+  workspaceName: string;
+  computeCosts: {
+    cpu: {
+      cores: number;
+      costPerMonth: number;
+    };
+    memory: {
+      gibibytes: number;
+      costPerMonth: number;
+    };
+    storage: {
+      gibibytes: number;
+      costPerMonth: number;
+    };
+    totalComputeCost: number;
+  };
+  overheadCosts: {
+    clusterManagement: {
+      description: string;
+      costPerMonth: number;
+    };
+    networking: {
+      description: string;
+      costPerMonth: number;
+    };
+    totalOverheadCost: number;
+  };
+  totalMonthlyCost: number;
+  usageFactor: number;
+  actualMonthlyCost: number;
+  pricingConfig: PricingConfig;
+}
+
 // AWS/Database types
 export interface DynamoDBItem {
   [key: string]: any;
