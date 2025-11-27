@@ -164,27 +164,60 @@ class DynamoDBService {
     try {
       // Since users have GSI1PK = EMAIL#{email}, we need to scan with a filter
       // This is less efficient but necessary with current schema
-      const params: AWS.DynamoDB.DocumentClient.ScanInput = {
-        TableName: this.tableName,
-        FilterExpression: 'EntityType = :entityType',
-        ExpressionAttributeValues: {
-          ':entityType': 'USER',
-        },
-        Limit: limit,
-      };
-
-      if (nextToken) {
-        params.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
-      }
-
-      const result = await this.dynamodb.scan(params).promise();
-
-      const users = (result.Items || []) as User[];
-      const responseNextToken = result.LastEvaluatedKey
-        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+      //
+      // IMPORTANT: DynamoDB's Limit parameter is applied BEFORE FilterExpression,
+      // so we need to keep scanning until we collect enough users or run out of items
+      const users: User[] = [];
+      let lastEvaluatedKey = nextToken
+        ? JSON.parse(Buffer.from(nextToken, 'base64').toString())
         : undefined;
 
-      return { users, nextToken: responseNextToken };
+      // Keep scanning until we have enough users or there are no more items
+      while (users.length < limit) {
+        const params: AWS.DynamoDB.DocumentClient.ScanInput = {
+          TableName: this.tableName,
+          FilterExpression: 'EntityType = :entityType',
+          ExpressionAttributeValues: {
+            ':entityType': 'USER',
+          },
+          // Use a larger scan limit to account for filtering
+          // This examines more items per scan to find users faster
+          Limit: limit * 5, // Scan 5x the desired user count
+        };
+
+        if (lastEvaluatedKey) {
+          params.ExclusiveStartKey = lastEvaluatedKey;
+        }
+
+        const result = await this.dynamodb.scan(params).promise();
+
+        // Add found users to our collection
+        if (result.Items && result.Items.length > 0) {
+          users.push(...(result.Items as User[]));
+        }
+
+        // Update the lastEvaluatedKey for potential next iteration
+        lastEvaluatedKey = result.LastEvaluatedKey;
+
+        // If no more items to scan, break out
+        if (!lastEvaluatedKey) {
+          break;
+        }
+
+        // If we have enough users, break out (we'll trim to exact limit below)
+        if (users.length >= limit) {
+          break;
+        }
+      }
+
+      // Trim to exact limit and determine if there are more users
+      const hasMore = users.length > limit || !!lastEvaluatedKey;
+      const trimmedUsers = users.slice(0, limit);
+      const responseNextToken = hasMore && lastEvaluatedKey
+        ? Buffer.from(JSON.stringify(lastEvaluatedKey)).toString('base64')
+        : undefined;
+
+      return { users: trimmedUsers, nextToken: responseNextToken };
     } catch (error) {
       throw new DatabaseError('Failed to list users', error);
     }
