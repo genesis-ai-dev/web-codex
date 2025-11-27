@@ -1709,6 +1709,17 @@ cert: false`;
         });
       }
 
+      // Detect instance types from node labels
+      const instanceTypes = new Set<string>();
+      for (const node of nodes) {
+        // AWS EKS nodes have instance type in labels
+        const instanceType = node.metadata?.labels?.['node.kubernetes.io/instance-type'] ||
+                            node.metadata?.labels?.['beta.kubernetes.io/instance-type'];
+        if (instanceType) {
+          instanceTypes.add(instanceType);
+        }
+      }
+
       const clusterCapacity = {
         totalCpu: this.formatQuantity(totalCpu, 'cpu'),
         totalMemory: this.formatQuantity(totalMemory, 'memory'),
@@ -1722,6 +1733,8 @@ cert: false`;
         nodeCount: nodes.length,
         availableWorkspaceCapacity: totalWorkspaceCapacity,
         nodes: nodeCapacityDetails,
+        instanceTypes: Array.from(instanceTypes), // List of detected instance types
+        primaryInstanceType: instanceTypes.size > 0 ? Array.from(instanceTypes)[0] : undefined,
       };
 
       logger.info('Cluster capacity calculated:', clusterCapacity);

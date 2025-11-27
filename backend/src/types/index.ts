@@ -228,6 +228,8 @@ export interface PricingConfig {
   storageGiBPerMonth: number;
   clusterOverheadRate: number;
   networkOverheadRate: number;
+  instanceType?: string;
+  derivedFromInstance?: boolean;
 }
 
 export interface WorkspaceCostBreakdown {

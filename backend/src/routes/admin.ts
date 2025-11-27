@@ -1008,8 +1008,26 @@ router.get('/workspaces/:workspaceId/cost',
         throw new NotFoundError('Workspace not found');
       }
 
+      // Try to get instance type from cluster for accurate pricing
+      let pricingConfig;
+      try {
+        const clusterCapacity = await kubernetesService.getClusterCapacity();
+        const instanceType = clusterCapacity.primaryInstanceType;
+        if (instanceType) {
+          logger.info(`Using detected instance type for cost calculation: ${instanceType}`);
+          pricingConfig = costService.loadPricingConfig(instanceType);
+        }
+      } catch (error) {
+        logger.warn('Failed to detect instance type, using default pricing:', error);
+      }
+
       // Calculate cost breakdown with estimated usage
-      const costBreakdown = costService.calculateWorkspaceCostWithUsage(workspace);
+      const usageFactor = costService.estimateUsageFactor(workspace);
+      const costBreakdown = costService.calculateWorkspaceCost(
+        workspace,
+        pricingConfig,
+        usageFactor
+      );
 
       res.json(costBreakdown);
     } catch (error) {
@@ -1022,7 +1040,17 @@ router.get('/workspaces/:workspaceId/cost',
 // Get pricing configuration
 router.get('/pricing/config', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const pricingConfig = costService.loadPricingConfig();
+    // Try to get instance type from cluster
+    let instanceType: string | undefined;
+    try {
+      const clusterCapacity = await kubernetesService.getClusterCapacity();
+      instanceType = clusterCapacity.primaryInstanceType;
+      logger.info(`Detected instance type from cluster: ${instanceType}`);
+    } catch (error) {
+      logger.warn('Failed to detect instance type from cluster, using default pricing:', error);
+    }
+
+    const pricingConfig = costService.loadPricingConfig(instanceType);
     res.json(pricingConfig);
   } catch (error) {
     logger.error('Failed to get pricing configuration:', error);

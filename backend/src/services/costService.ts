@@ -5,13 +5,62 @@ import { logger } from '../config/logger';
  * Cost calculation service for workspace resource pricing
  *
  * This service calculates the monthly cost estimate for workspaces based on:
- * 1. Direct compute costs (CPU, memory, storage)
+ * 1. Direct compute costs derived from EC2 instance pricing
  * 2. Overhead costs (cluster management, networking, control plane)
  */
 
+// EC2 Instance pricing (hourly rates in USD) - us-east-1 on-demand pricing
+// Source: AWS EC2 pricing as of 2024
+export interface InstancePricing {
+  instanceType: string;
+  hourlyRate: number;
+  vCPUs: number;
+  memoryGiB: number;
+}
+
+// Common EC2 instance types used in EKS clusters
+// Prices are approximate on-demand rates for us-east-1
+const EC2_INSTANCE_PRICING: Record<string, InstancePricing> = {
+  // T3 instances (burstable)
+  't3.medium': { instanceType: 't3.medium', hourlyRate: 0.0416, vCPUs: 2, memoryGiB: 4 },
+  't3.large': { instanceType: 't3.large', hourlyRate: 0.0832, vCPUs: 2, memoryGiB: 8 },
+  't3.xlarge': { instanceType: 't3.xlarge', hourlyRate: 0.1664, vCPUs: 4, memoryGiB: 16 },
+  't3.2xlarge': { instanceType: 't3.2xlarge', hourlyRate: 0.3328, vCPUs: 8, memoryGiB: 32 },
+
+  // T3a instances (AMD, cheaper burstable)
+  't3a.medium': { instanceType: 't3a.medium', hourlyRate: 0.0374, vCPUs: 2, memoryGiB: 4 },
+  't3a.large': { instanceType: 't3a.large', hourlyRate: 0.0749, vCPUs: 2, memoryGiB: 8 },
+  't3a.xlarge': { instanceType: 't3a.xlarge', hourlyRate: 0.1498, vCPUs: 4, memoryGiB: 16 },
+  't3a.2xlarge': { instanceType: 't3a.2xlarge', hourlyRate: 0.2995, vCPUs: 8, memoryGiB: 32 },
+
+  // M5 instances (general purpose)
+  'm5.large': { instanceType: 'm5.large', hourlyRate: 0.096, vCPUs: 2, memoryGiB: 8 },
+  'm5.xlarge': { instanceType: 'm5.xlarge', hourlyRate: 0.192, vCPUs: 4, memoryGiB: 16 },
+  'm5.2xlarge': { instanceType: 'm5.2xlarge', hourlyRate: 0.384, vCPUs: 8, memoryGiB: 32 },
+  'm5.4xlarge': { instanceType: 'm5.4xlarge', hourlyRate: 0.768, vCPUs: 16, memoryGiB: 64 },
+
+  // M5a instances (AMD, cheaper general purpose)
+  'm5a.large': { instanceType: 'm5a.large', hourlyRate: 0.086, vCPUs: 2, memoryGiB: 8 },
+  'm5a.xlarge': { instanceType: 'm5a.xlarge', hourlyRate: 0.172, vCPUs: 4, memoryGiB: 16 },
+  'm5a.2xlarge': { instanceType: 'm5a.2xlarge', hourlyRate: 0.344, vCPUs: 8, memoryGiB: 32 },
+  'm5a.4xlarge': { instanceType: 'm5a.4xlarge', hourlyRate: 0.688, vCPUs: 16, memoryGiB: 64 },
+
+  // C5 instances (compute optimized)
+  'c5.large': { instanceType: 'c5.large', hourlyRate: 0.085, vCPUs: 2, memoryGiB: 4 },
+  'c5.xlarge': { instanceType: 'c5.xlarge', hourlyRate: 0.17, vCPUs: 4, memoryGiB: 8 },
+  'c5.2xlarge': { instanceType: 'c5.2xlarge', hourlyRate: 0.34, vCPUs: 8, memoryGiB: 16 },
+  'c5.4xlarge': { instanceType: 'c5.4xlarge', hourlyRate: 0.68, vCPUs: 16, memoryGiB: 32 },
+
+  // R5 instances (memory optimized)
+  'r5.large': { instanceType: 'r5.large', hourlyRate: 0.126, vCPUs: 2, memoryGiB: 16 },
+  'r5.xlarge': { instanceType: 'r5.xlarge', hourlyRate: 0.252, vCPUs: 4, memoryGiB: 32 },
+  'r5.2xlarge': { instanceType: 'r5.2xlarge', hourlyRate: 0.504, vCPUs: 8, memoryGiB: 64 },
+  'r5.4xlarge': { instanceType: 'r5.4xlarge', hourlyRate: 1.008, vCPUs: 16, memoryGiB: 128 },
+};
+
 // Pricing configuration (monthly rates in USD)
 export interface PricingConfig {
-  // Compute costs per unit per month
+  // Compute costs per unit per month (calculated from instance pricing)
   cpuCorePerMonth: number;      // Cost per CPU core
   memoryGiBPerMonth: number;    // Cost per GiB of memory
   storageGiBPerMonth: number;   // Cost per GiB of storage
@@ -19,19 +68,57 @@ export interface PricingConfig {
   // Overhead allocation percentages
   clusterOverheadRate: number;  // % of compute cost for cluster management (control plane, monitoring, etc.)
   networkOverheadRate: number;  // % of compute cost for networking (ingress, load balancer, etc.)
+
+  // Instance type used for calculation (if from actual cluster)
+  instanceType?: string;
+  derivedFromInstance?: boolean;
 }
 
-// Default pricing based on typical cloud provider costs
-// These are rough estimates and should be adjusted based on actual infrastructure costs
+// Calculate per-unit pricing from instance type
+function calculatePricingFromInstance(instanceType: string): { cpuCorePerMonth: number; memoryGiBPerMonth: number } {
+  const pricing = EC2_INSTANCE_PRICING[instanceType.toLowerCase()];
+
+  if (!pricing) {
+    logger.warn(`Unknown instance type: ${instanceType}, using default pricing`);
+    return {
+      cpuCorePerMonth: 30.00,
+      memoryGiBPerMonth: 4.00,
+    };
+  }
+
+  // Convert hourly to monthly (730 hours/month average)
+  const monthlyInstanceCost = pricing.hourlyRate * 730;
+
+  // Divide by vCPUs and memory to get per-unit cost
+  const cpuCorePerMonth = monthlyInstanceCost / pricing.vCPUs;
+  const memoryGiBPerMonth = monthlyInstanceCost / pricing.memoryGiB;
+
+  logger.info(`Calculated pricing from ${instanceType}:`, {
+    monthlyInstanceCost: monthlyInstanceCost.toFixed(2),
+    cpuCorePerMonth: cpuCorePerMonth.toFixed(2),
+    memoryGiBPerMonth: memoryGiBPerMonth.toFixed(2),
+  });
+
+  return { cpuCorePerMonth, memoryGiBPerMonth };
+}
+
+// Default pricing based on t3a.xlarge (common choice for EKS)
+// This is a fallback when instance type is not available
+const DEFAULT_INSTANCE_TYPE = 't3a.xlarge';
+const defaultInstancePricing = calculatePricingFromInstance(DEFAULT_INSTANCE_TYPE);
+
 const DEFAULT_PRICING: PricingConfig = {
-  // Typical cloud pricing (average of major providers)
-  cpuCorePerMonth: 30.00,        // ~$30/core/month
-  memoryGiBPerMonth: 4.00,       // ~$4/GiB/month
-  storageGiBPerMonth: 0.10,      // ~$0.10/GiB/month for persistent storage
+  // Pricing derived from t3a.xlarge instance
+  cpuCorePerMonth: defaultInstancePricing.cpuCorePerMonth,
+  memoryGiBPerMonth: defaultInstancePricing.memoryGiBPerMonth,
+  storageGiBPerMonth: 0.10,      // ~$0.10/GiB/month for EBS gp3 storage
 
   // Overhead costs (distributed across workspaces)
   clusterOverheadRate: 0.20,     // 20% overhead for cluster management
   networkOverheadRate: 0.10,     // 10% overhead for networking
+
+  instanceType: DEFAULT_INSTANCE_TYPE,
+  derivedFromInstance: true,
 };
 
 export interface WorkspaceCostBreakdown {
@@ -222,16 +309,46 @@ export function getDefaultPricing(): PricingConfig {
 }
 
 /**
- * Update pricing configuration from environment variables or settings
+ * Load pricing configuration from environment variables or instance type
  */
-export function loadPricingConfig(): PricingConfig {
-  return {
-    cpuCorePerMonth: parseFloat(process.env.PRICING_CPU_CORE_PER_MONTH || String(DEFAULT_PRICING.cpuCorePerMonth)),
-    memoryGiBPerMonth: parseFloat(process.env.PRICING_MEMORY_GIB_PER_MONTH || String(DEFAULT_PRICING.memoryGiBPerMonth)),
-    storageGiBPerMonth: parseFloat(process.env.PRICING_STORAGE_GIB_PER_MONTH || String(DEFAULT_PRICING.storageGiBPerMonth)),
-    clusterOverheadRate: parseFloat(process.env.PRICING_CLUSTER_OVERHEAD_RATE || String(DEFAULT_PRICING.clusterOverheadRate)),
-    networkOverheadRate: parseFloat(process.env.PRICING_NETWORK_OVERHEAD_RATE || String(DEFAULT_PRICING.networkOverheadRate)),
-  };
+export function loadPricingConfig(instanceType?: string): PricingConfig {
+  // If instance type is provided, calculate pricing from it
+  if (instanceType) {
+    const instancePricing = calculatePricingFromInstance(instanceType);
+    return {
+      cpuCorePerMonth: instancePricing.cpuCorePerMonth,
+      memoryGiBPerMonth: instancePricing.memoryGiBPerMonth,
+      storageGiBPerMonth: parseFloat(process.env.PRICING_STORAGE_GIB_PER_MONTH || String(DEFAULT_PRICING.storageGiBPerMonth)),
+      clusterOverheadRate: parseFloat(process.env.PRICING_CLUSTER_OVERHEAD_RATE || String(DEFAULT_PRICING.clusterOverheadRate)),
+      networkOverheadRate: parseFloat(process.env.PRICING_NETWORK_OVERHEAD_RATE || String(DEFAULT_PRICING.networkOverheadRate)),
+      instanceType,
+      derivedFromInstance: true,
+    };
+  }
+
+  // Check if explicit pricing is set via environment variables
+  const hasExplicitPricing = process.env.PRICING_CPU_CORE_PER_MONTH || process.env.PRICING_MEMORY_GIB_PER_MONTH;
+
+  if (hasExplicitPricing) {
+    return {
+      cpuCorePerMonth: parseFloat(process.env.PRICING_CPU_CORE_PER_MONTH || String(DEFAULT_PRICING.cpuCorePerMonth)),
+      memoryGiBPerMonth: parseFloat(process.env.PRICING_MEMORY_GIB_PER_MONTH || String(DEFAULT_PRICING.memoryGiBPerMonth)),
+      storageGiBPerMonth: parseFloat(process.env.PRICING_STORAGE_GIB_PER_MONTH || String(DEFAULT_PRICING.storageGiBPerMonth)),
+      clusterOverheadRate: parseFloat(process.env.PRICING_CLUSTER_OVERHEAD_RATE || String(DEFAULT_PRICING.clusterOverheadRate)),
+      networkOverheadRate: parseFloat(process.env.PRICING_NETWORK_OVERHEAD_RATE || String(DEFAULT_PRICING.networkOverheadRate)),
+      derivedFromInstance: false,
+    };
+  }
+
+  // Use default pricing (based on t3a.xlarge)
+  return { ...DEFAULT_PRICING };
+}
+
+/**
+ * Get list of supported instance types
+ */
+export function getSupportedInstanceTypes(): InstancePricing[] {
+  return Object.values(EC2_INSTANCE_PRICING);
 }
 
 export const costService = {
@@ -241,4 +358,6 @@ export const costService = {
   getDefaultPricing,
   loadPricingConfig,
   parseResourceValue,
+  getSupportedInstanceTypes,
+  calculatePricingFromInstance,
 };

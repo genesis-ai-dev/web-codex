@@ -304,8 +304,20 @@ export const WorkspaceCostBreakdown: React.FC<WorkspaceCostBreakdownProps> = ({
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-800 dark:text-blue-200">
               <strong>Note:</strong> These are estimated costs based on allocated resources and usage patterns.
-              Actual costs may vary based on cloud provider pricing, reserved instances, and actual runtime.
-              Storage costs apply even when the workspace is stopped.
+              {costData.pricingConfig.derivedFromInstance && costData.pricingConfig.instanceType && (
+                <span className="block mt-1">
+                  Pricing calculated from <strong>{costData.pricingConfig.instanceType}</strong> instance type.
+                </span>
+              )}
+              {!costData.pricingConfig.derivedFromInstance && (
+                <span className="block mt-1">
+                  Using default pricing model.
+                </span>
+              )}
+              <span className="block mt-1">
+                Actual costs may vary based on cloud provider pricing, reserved instances, and actual runtime.
+                Storage costs apply even when the workspace is stopped.
+              </span>
             </p>
           </div>
         </CardContent>
