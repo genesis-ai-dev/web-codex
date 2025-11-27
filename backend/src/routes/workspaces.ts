@@ -168,7 +168,7 @@ router.post('/',
         }
       }
 
-      // Create workspace in database
+      // Create workspace in database with STOPPED status since it will be created with 0 replicas
       const workspace = await dynamodbService.createWorkspace({
         id: workspaceId,
         name: createRequest.name,
@@ -176,7 +176,7 @@ router.post('/',
         groupId: createRequest.groupId,
         groupName: group.displayName,
         userId: user.id,
-        status: WorkspaceStatus.PENDING,
+        status: WorkspaceStatus.STOPPED,
         url: `https://loadbalancer.frontierrnd.com/${namespace}/${k8sName}`,
         password,
         resources,
@@ -220,13 +220,8 @@ router.post('/',
         const pathPrefix = `/${namespace}/${k8sName}`;
         await kubernetesService.createOrUpdateHTTPRoute(namespace, pathPrefix);
 
-        // Update status to stopped (created but not running)
-        const updatedWorkspace = await dynamodbService.updateWorkspace(workspaceId, {
-          status: WorkspaceStatus.STOPPED,
-        });
-
         logger.info(`Workspace created: ${workspaceId} for user ${user.id}`);
-        res.status(201).json(updatedWorkspace);
+        res.status(201).json(workspace);
       } catch (k8sError) {
         // Clean up any resources that were created before the failure
         logger.error(`Workspace creation failed, cleaning up resources for ${workspaceId}:`, k8sError);
