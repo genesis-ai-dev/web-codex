@@ -474,6 +474,7 @@ cert: false`;
                 imagePullPolicy: 'IfNotPresent',
                 args: [
                   '--bind-addr=0.0.0.0:8000',
+                  '--disable-workspace-trust',
                 ],
                 ports: [{
                   containerPort: 8000,
