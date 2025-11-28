@@ -1320,7 +1320,39 @@ cert: false`;
       const httpRouteName = `${namespace}-httproute`;
 
       // Get list of all workspaces in this namespace to rebuild HTTPRoute rules
-      const services = await this.coreV1Api.listNamespacedService({ namespace });
+      // Add retry logic to handle eventual consistency - services may not be immediately visible
+      let services: any;
+      const maxRetries = 3;
+      const retryDelay = 1000; // 1 second
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          services = await this.coreV1Api.listNamespacedService({ namespace });
+
+          // If we're expecting workspace services (pathPrefix provided) but none exist yet, retry
+          if (pathPrefix && attempt < maxRetries) {
+            const workspaceServices = services.items.filter(
+              svc => svc.metadata?.name?.startsWith('workspace-') && svc.metadata.name !== 'code-server-proxy-service'
+            );
+
+            // If this is not a deletion (pathPrefix not empty) and we have no workspace services yet, wait and retry
+            if (workspaceServices.length === 0) {
+              logger.warn(`No workspace services found yet in namespace ${namespace}, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})`);
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              continue;
+            }
+          }
+
+          // Successfully got services
+          break;
+        } catch (error) {
+          if (attempt === maxRetries) {
+            throw error;
+          }
+          logger.warn(`Failed to list services in namespace ${namespace}, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
 
       // Filter to only workspace services (exclude proxy service)
       const workspaceServices = services.items.filter(
