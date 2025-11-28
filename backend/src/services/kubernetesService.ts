@@ -466,7 +466,10 @@ cert: false`;
               dnsPolicy: 'ClusterFirst',
               schedulerName: 'default-scheduler',
               terminationGracePeriodSeconds: 30,
-              securityContext: {},
+              securityContext: {
+                fsGroup: 1000, // Matches the 'coder' user/group in code-server image
+                fsGroupChangePolicy: 'OnRootMismatch', // Only change ownership if needed (faster)
+              },
               containers: [{
                 name: 'codex',
                 image,
