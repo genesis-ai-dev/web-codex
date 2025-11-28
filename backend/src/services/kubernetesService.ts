@@ -1260,11 +1260,23 @@ cert: false`;
 
     while (Date.now() - startTime < timeoutMs) {
       try {
-        // Try to get the service
+        // Try to get the service directly
         const service = await this.coreV1Api.readNamespacedService({ name, namespace });
         if (service && service.spec?.clusterIP) {
-          logger.info(`Service ${name} is available in namespace ${namespace}`);
-          return;
+          // Also verify service appears in list (for eventual consistency with HTTPRoute queries)
+          try {
+            const serviceList = await this.coreV1Api.listNamespacedService({ namespace });
+            const serviceInList = serviceList.items.find(s => s.metadata?.name === name);
+
+            if (serviceInList) {
+              logger.info(`Service ${name} is available and visible in list for namespace ${namespace}`);
+              return;
+            } else {
+              logger.debug(`Service ${name} exists but not yet visible in list, continuing to wait...`);
+            }
+          } catch (listError) {
+            logger.debug(`Failed to verify service in list, continuing to wait...`);
+          }
         }
       } catch (error) {
         // Service not ready yet, continue polling
@@ -1332,6 +1344,9 @@ cert: false`;
     try {
       const httpRouteName = `${namespace}-httproute`;
 
+      // Extract expected service name from pathPrefix (format: /<namespace>/<serviceName>)
+      const expectedServiceName = pathPrefix ? pathPrefix.split('/').filter(Boolean)[1] : null;
+
       // Get list of all workspaces in this namespace to rebuild HTTPRoute rules
       // Add retry logic to handle eventual consistency - services may not be immediately visible
       let services: any;
@@ -1342,17 +1357,18 @@ cert: false`;
         try {
           services = await this.coreV1Api.listNamespacedService({ namespace });
 
-          // If we're expecting workspace services (pathPrefix provided) but none exist yet, retry
-          if (pathPrefix && attempt < maxRetries) {
-            const workspaceServices = services.items.filter(
-              svc => svc.metadata?.name?.startsWith('workspace-') && svc.metadata.name !== 'code-server-proxy-service'
+          // If we're expecting a specific service (from pathPrefix), verify it appears in the list
+          if (expectedServiceName && attempt < maxRetries) {
+            const serviceInList = services.items.find(
+              svc => svc.metadata?.name === expectedServiceName
             );
 
-            // If this is not a deletion (pathPrefix not empty) and we have no workspace services yet, wait and retry
-            if (workspaceServices.length === 0) {
-              logger.warn(`No workspace services found yet in namespace ${namespace}, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})`);
+            if (!serviceInList) {
+              logger.warn(`Expected service ${expectedServiceName} not found in namespace ${namespace}, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})`);
               await new Promise(resolve => setTimeout(resolve, retryDelay));
               continue;
+            } else {
+              logger.info(`Service ${expectedServiceName} found in list for namespace ${namespace}`);
             }
           }
 
