@@ -474,6 +474,8 @@ cert: false`;
                 args: [
                   '--bind-addr=0.0.0.0:8000',
                   '--disable-workspace-trust',
+                  '--disable-telemetry',
+                  '--ignore-last-opened',
                 ],
                 ports: [{
                   containerPort: 8000,
@@ -527,7 +529,7 @@ cert: false`;
                   },
                   {
                     name: 'workspace-storage',
-                    mountPath: '/home/coder',
+                    mountPath: '/home/coder/.codex-projects',
                   },
                 ],
               }],
