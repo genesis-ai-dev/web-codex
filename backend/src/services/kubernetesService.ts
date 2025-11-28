@@ -551,7 +551,7 @@ cert: false`;
             },
             spec: {
               accessModes: ['ReadWriteOnce'],
-              storageClassName: 'gp3',
+              storageClassName: 'ebs-gp3',
               resources: {
                 requests: {
                   storage: resources.storage,
@@ -1536,7 +1536,7 @@ cert: false`;
   }
 
   // PVC operations
-  async createPVC(namespace: string, name: string, size: string, storageClass: string = 'gp3'): Promise<void> {
+  async createPVC(namespace: string, name: string, size: string, storageClass: string = 'ebs-gp3'): Promise<void> {
     try {
       const pvc: k8s.V1PersistentVolumeClaim = {
         metadata: {
