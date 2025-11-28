@@ -871,7 +871,7 @@ router.delete('/workspaces/:workspaceId',
       // Delete Kubernetes resources (if namespace exists)
       if (namespace) {
         try {
-          await kubernetesService.deleteDeployment(namespace, k8sName);
+          await kubernetesService.deleteStatefulSet(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
           await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
           // TODO: Re-enable PVC deletion once storage is configured

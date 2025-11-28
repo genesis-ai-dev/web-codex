@@ -425,7 +425,138 @@ cert: false`;
     }
   }
 
-  // Deployment operations
+  // StatefulSet operations
+  async createStatefulSet(
+    namespace: string,
+    name: string,
+    image: string,
+    resources: any,
+    labels: Record<string, string> = {}
+  ): Promise<void> {
+    try {
+      const statefulSet: k8s.V1StatefulSet = {
+        metadata: {
+          name,
+          namespace,
+          labels: {
+            app: name,
+            'app.kubernetes.io/managed-by': 'vscode-platform',
+            ...labels,
+          },
+        },
+        spec: {
+          replicas: 0, // Start with 0 replicas (stopped)
+          serviceName: name, // Required for StatefulSet
+          revisionHistoryLimit: 10,
+          selector: {
+            matchLabels: { app: name },
+          },
+          updateStrategy: {
+            type: 'RollingUpdate',
+            rollingUpdate: {
+              partition: 0,
+            },
+          },
+          template: {
+            metadata: {
+              labels: { app: name, ...labels },
+            },
+            spec: {
+              restartPolicy: 'Always',
+              dnsPolicy: 'ClusterFirst',
+              schedulerName: 'default-scheduler',
+              terminationGracePeriodSeconds: 30,
+              securityContext: {},
+              containers: [{
+                name: 'codex',
+                image,
+                imagePullPolicy: 'IfNotPresent',
+                args: [
+                  '--bind-addr=0.0.0.0:8000',
+                  '--disable-workspace-trust',
+                ],
+                ports: [{
+                  containerPort: 8000,
+                  name: 'http',
+                  protocol: 'TCP',
+                }],
+                resources: {
+                  requests: {
+                    cpu: resources.cpu,
+                    memory: resources.memory,
+                  },
+                  limits: {
+                    // No CPU limits - only requests
+                    memory: resources.memory, // Memory limit equals memory request
+                  },
+                },
+                startupProbe: {
+                  tcpSocket: {
+                    port: 8000,
+                  },
+                  failureThreshold: 24,
+                  periodSeconds: 10,
+                  timeoutSeconds: 240,
+                  successThreshold: 1,
+                },
+                livenessProbe: {
+                  tcpSocket: {
+                    port: 8000,
+                  },
+                  failureThreshold: 3,
+                  periodSeconds: 10,
+                  timeoutSeconds: 5,
+                  successThreshold: 1,
+                },
+                readinessProbe: {
+                  tcpSocket: {
+                    port: 8000,
+                  },
+                  failureThreshold: 2,
+                  periodSeconds: 5,
+                  timeoutSeconds: 3,
+                  successThreshold: 1,
+                },
+                terminationMessagePath: '/dev/termination-log',
+                terminationMessagePolicy: 'File',
+                volumeMounts: [{
+                  name: 'config',
+                  mountPath: '/home/coder/.config/codex',
+                  readOnly: true,
+                }],
+                // TODO: Re-enable workspace storage volume mounts once PVC storage is configured
+                // {
+                //   name: 'workspace-storage',
+                //   mountPath: '/home/coder',
+                // }],
+              }],
+              volumes: [{
+                name: 'config',
+                secret: {
+                  secretName: `${name}-config`,
+                  defaultMode: 0o644,
+                },
+              }],
+              // TODO: Re-enable workspace storage volumes once PVC storage is configured
+              // {
+              //   name: 'workspace-storage',
+              //   persistentVolumeClaim: {
+              //     claimName: `${name}-pvc`,
+              //   },
+              // }],
+            },
+          },
+        },
+      };
+
+      await this.appsV1Api.createNamespacedStatefulSet({ namespace, body: statefulSet });
+      logger.info(`StatefulSet created: ${name} in namespace ${namespace}`);
+    } catch (error) {
+      throw new KubernetesError(`Failed to create StatefulSet ${name}`, error);
+    }
+  }
+
+  // Deployment operations (keeping for backwards compatibility with nginx proxy)
   async createDeployment(
     namespace: string,
     name: string,
@@ -557,6 +688,33 @@ cert: false`;
     }
   }
 
+  async scaleStatefulSet(namespace: string, name: string, replicas: number): Promise<void> {
+    try {
+      // Use readNamespacedStatefulSetScale to get current scale object
+      const scaleResponse = await this.appsV1Api.readNamespacedStatefulSetScale({ name, namespace });
+
+      // Update the replicas count
+      const scale = scaleResponse;
+      if (scale.spec) {
+        scale.spec.replicas = replicas;
+      }
+
+      // Replace the scale object
+      await this.appsV1Api.replaceNamespacedStatefulSetScale({
+        namespace,
+        name,
+        body: scale,
+      });
+
+      logger.info(`StatefulSet ${name} scaled to ${replicas} replicas`);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        throw new NotFoundError(`StatefulSet ${name} not found in namespace ${namespace}`);
+      }
+      throw new KubernetesError(`Failed to scale StatefulSet ${name}`, error);
+    }
+  }
+
   async scaleDeployment(namespace: string, name: string, replicas: number): Promise<void> {
     try {
       // Use readNamespacedDeploymentScale to get current scale object
@@ -653,6 +811,20 @@ cert: false`;
     }
   }
 
+  async deleteStatefulSet(namespace: string, name: string): Promise<void> {
+    try {
+      await this.appsV1Api.deleteNamespacedStatefulSet({ name, namespace });
+      logger.info(`StatefulSet deleted: ${name} in namespace ${namespace}`);
+    } catch (error: any) {
+      const statusCode = error.statusCode || error.response?.statusCode || error.code;
+      if (statusCode === 404) {
+        logger.warn(`StatefulSet not found for deletion: ${name}`);
+        return;
+      }
+      throw new KubernetesError(`Failed to delete StatefulSet ${name}`, error);
+    }
+  }
+
   async deleteDeployment(namespace: string, name: string): Promise<void> {
     try {
       await this.appsV1Api.deleteNamespacedDeployment({ name, namespace });
@@ -664,6 +836,35 @@ cert: false`;
         return;
       }
       throw new KubernetesError(`Failed to delete deployment ${name}`, error);
+    }
+  }
+
+  async getStatefulSetStatus(namespace: string, name: string): Promise<WorkspaceStatus> {
+    try {
+      const response = await this.appsV1Api.readNamespacedStatefulSet({ name, namespace });
+      const statefulSet = response;
+
+      const readyReplicas = statefulSet.status?.readyReplicas || 0;
+      const replicas = statefulSet.spec?.replicas || 0;
+
+      if (replicas === 0) {
+        return WorkspaceStatus.STOPPED;
+      }
+
+      if (readyReplicas === 0) {
+        return WorkspaceStatus.STARTING;
+      }
+
+      if (readyReplicas < replicas) {
+        return WorkspaceStatus.STARTING;
+      }
+
+      return WorkspaceStatus.RUNNING;
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return WorkspaceStatus.STOPPED;
+      }
+      throw new KubernetesError(`Failed to get StatefulSet status for ${name}`, error);
     }
   }
 
@@ -696,6 +897,24 @@ cert: false`;
     }
   }
 
+  async getStatefulSetDetails(namespace: string, name: string): Promise<{ image: string; replicas: number } | null> {
+    try {
+      const response = await this.appsV1Api.readNamespacedStatefulSet({ name, namespace });
+      const statefulSet = response;
+
+      const containers = statefulSet.spec?.template?.spec?.containers || [];
+      const image = containers[0]?.image || '';
+      const replicas = statefulSet.spec?.replicas || 0;
+
+      return { image, replicas };
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return null;
+      }
+      throw new KubernetesError(`Failed to get StatefulSet details for ${name}`, error);
+    }
+  }
+
   async getDeploymentDetails(namespace: string, name: string): Promise<{ image: string; replicas: number } | null> {
     try {
       const response = await this.appsV1Api.readNamespacedDeployment({ name, namespace });
@@ -717,73 +936,68 @@ cert: false`;
   async getWorkspaceComponentHealth(namespace: string, name: string): Promise<ComponentHealthStatus[]> {
     const components: ComponentHealthStatus[] = [];
 
-    // Check Deployment
+    // Check StatefulSet
     try {
-      const deployment = await this.appsV1Api.readNamespacedDeployment({ name, namespace });
-      const replicas = deployment.spec?.replicas || 0;
-      const readyReplicas = deployment.status?.readyReplicas || 0;
-      const availableReplicas = deployment.status?.availableReplicas || 0;
-      const unavailableReplicas = deployment.status?.unavailableReplicas || 0;
+      const statefulSet = await this.appsV1Api.readNamespacedStatefulSet({ name, namespace });
+      const replicas = statefulSet.spec?.replicas || 0;
+      const readyReplicas = statefulSet.status?.readyReplicas || 0;
+      const currentReplicas = statefulSet.status?.currentReplicas || 0;
+      const updatedReplicas = statefulSet.status?.updatedReplicas || 0;
 
       let healthy = true;
       let reason = '';
 
       if (replicas === 0) {
         healthy = true;
-        reason = 'Deployment scaled to 0 replicas (workspace stopped)';
+        reason = 'StatefulSet scaled to 0 replicas (workspace stopped)';
       } else if (readyReplicas < replicas) {
         healthy = false;
         reason = `Only ${readyReplicas} of ${replicas} replicas are ready`;
 
         // Check for more specific issues
-        const conditions = deployment.status?.conditions || [];
-        const progressingCondition = conditions.find(c => c.type === 'Progressing');
+        const conditions = statefulSet.status?.conditions || [];
         const availableCondition = conditions.find(c => c.type === 'Available');
 
-        if (progressingCondition?.status === 'False') {
-          reason = progressingCondition.message || reason;
-        } else if (availableCondition?.status === 'False') {
+        if (availableCondition?.status === 'False') {
           reason = availableCondition.message || reason;
         }
-      } else if (unavailableReplicas > 0) {
-        healthy = false;
-        reason = `${unavailableReplicas} replicas are unavailable`;
       } else {
         healthy = true;
         reason = `All ${replicas} replicas are ready and available`;
       }
 
       components.push({
-        name: 'Deployment',
-        type: 'deployment',
+        name: 'StatefulSet',
+        type: 'statefulset',
         healthy,
-        status: deployment.status?.conditions?.find(c => c.type === 'Available')?.status === 'True' ? 'Available' : 'Unavailable',
+        status: statefulSet.status?.conditions?.find(c => c.type === 'Available')?.status === 'True' ? 'Available' :
+                (readyReplicas === replicas && replicas > 0) ? 'Available' : 'Unavailable',
         reason,
         details: {
           replicas: replicas,
           readyReplicas: readyReplicas,
-          availableReplicas: availableReplicas,
-          updatedReplicas: deployment.status?.updatedReplicas || 0,
+          currentReplicas: currentReplicas,
+          updatedReplicas: updatedReplicas,
         }
       });
     } catch (error) {
       if (error.statusCode === 404) {
         components.push({
-          name: 'Deployment',
-          type: 'deployment',
+          name: 'StatefulSet',
+          type: 'statefulset',
           healthy: false,
           status: 'NotFound',
-          reason: 'Deployment does not exist',
+          reason: 'StatefulSet does not exist',
           details: {}
         });
       } else {
-        logger.warn(`Failed to get deployment health for ${name}:`, error);
+        logger.warn(`Failed to get StatefulSet health for ${name}:`, error);
         components.push({
-          name: 'Deployment',
-          type: 'deployment',
+          name: 'StatefulSet',
+          type: 'statefulset',
           healthy: false,
           status: 'Unknown',
-          reason: 'Failed to fetch deployment status',
+          reason: 'Failed to fetch StatefulSet status',
           details: { error: String(error) }
         });
       }

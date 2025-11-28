@@ -85,7 +85,7 @@ router.get('/',
             }
 
             const k8sName = `workspace-${workspace.id.substring(3)}`.toLowerCase();
-            const k8sStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
+            const k8sStatus = await kubernetesService.getStatefulSetStatus(namespace, k8sName);
 
             // Fetch metrics for running workspaces
             let metrics: any = undefined;
@@ -206,7 +206,7 @@ router.post('/',
 
         // TODO: Re-enable PVC creation once storage is configured
         // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
-        await kubernetesService.createDeployment(namespace, k8sName, workspace.image, resources);
+        await kubernetesService.createStatefulSet(namespace, k8sName, workspace.image, resources);
         await kubernetesService.createService(namespace, k8sName);
 
         // Create nginx proxy infrastructure (Deployment, Service) - only once per namespace
@@ -226,7 +226,7 @@ router.post('/',
         // Clean up any resources that were created before the failure
         logger.error(`Workspace creation failed, cleaning up resources for ${workspaceId}:`, k8sError);
         try {
-          await kubernetesService.deleteDeployment(namespace, k8sName);
+          await kubernetesService.deleteStatefulSet(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
           await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
           await kubernetesService.deleteNamespacedConfigMap('code-server-nginx-config', namespace);
@@ -274,7 +274,7 @@ router.get('/:workspaceId',
         }
 
         const k8sName = `workspace-${workspaceId.substring(3)}`.toLowerCase();
-        const k8sStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
+        const k8sStatus = await kubernetesService.getStatefulSetStatus(namespace, k8sName);
         const metrics = await kubernetesService.getNamespaceMetrics(namespace);
 
         if (k8sStatus !== workspace.status) {
@@ -364,7 +364,7 @@ router.delete('/:workspaceId',
       const namespace = await getWorkspaceNamespace(workspace);
       if (namespace) {
         try {
-          await kubernetesService.deleteDeployment(namespace, k8sName);
+          await kubernetesService.deleteStatefulSet(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
           await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
           // TODO: Re-enable PVC deletion once storage is configured
@@ -466,14 +466,14 @@ router.post('/:workspaceId/actions',
         replicas,
         lastAccessedAt: new Date().toISOString(),
       });
-      
-      // Scale deployment in Kubernetes
-      await kubernetesService.scaleDeployment(namespace, k8sName, replicas);
-      
+
+      // Scale StatefulSet in Kubernetes
+      await kubernetesService.scaleStatefulSet(namespace, k8sName, replicas);
+
       // Wait a moment and check final status
       setTimeout(async () => {
         try {
-          const finalStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
+          const finalStatus = await kubernetesService.getStatefulSetStatus(namespace, k8sName);
           await dynamodbService.updateWorkspace(workspaceId, { status: finalStatus });
         } catch (error) {
           logger.warn(`Failed to update final status for workspace ${workspaceId}:`, error);
@@ -519,10 +519,10 @@ router.post('/:workspaceId/sync',
       logger.info(`Starting sync for workspace ${workspaceId} in namespace ${namespace} with k8s name ${k8sName}`);
 
       // Get current state from Kubernetes
-      const k8sStatus = await kubernetesService.getDeploymentStatus(namespace, k8sName);
+      const k8sStatus = await kubernetesService.getStatefulSetStatus(namespace, k8sName);
       logger.info(`Got K8s status for ${workspaceId}: ${k8sStatus}`);
 
-      const k8sDetails = await kubernetesService.getDeploymentDetails(namespace, k8sName);
+      const k8sDetails = await kubernetesService.getStatefulSetDetails(namespace, k8sName);
       logger.info(`Got K8s details for ${workspaceId}:`, k8sDetails);
 
       // Update workspace with K8s state
