@@ -519,16 +519,17 @@ cert: false`;
                 },
                 terminationMessagePath: '/dev/termination-log',
                 terminationMessagePolicy: 'File',
-                volumeMounts: [{
-                  name: 'config',
-                  mountPath: '/home/coder/.config/codex',
-                  readOnly: true,
-                }],
-                // TODO: Re-enable workspace storage volume mounts once PVC storage is configured
-                // {
-                //   name: 'workspace-storage',
-                //   mountPath: '/home/coder',
-                // }],
+                volumeMounts: [
+                  {
+                    name: 'config',
+                    mountPath: '/home/coder/.config/codex',
+                    readOnly: true,
+                  },
+                  {
+                    name: 'workspace-storage',
+                    mountPath: '/home/coder',
+                  },
+                ],
               }],
               volumes: [{
                 name: 'config',
@@ -537,20 +538,32 @@ cert: false`;
                   defaultMode: 0o644,
                 },
               }],
-              // TODO: Re-enable workspace storage volumes once PVC storage is configured
-              // {
-              //   name: 'workspace-storage',
-              //   persistentVolumeClaim: {
-              //     claimName: `${name}-pvc`,
-              //   },
-              // }],
             },
           },
+          // Use volumeClaimTemplates for StatefulSet persistent storage
+          volumeClaimTemplates: [{
+            metadata: {
+              name: 'workspace-storage',
+              labels: {
+                app: name,
+                'app.kubernetes.io/managed-by': 'vscode-platform',
+              },
+            },
+            spec: {
+              accessModes: ['ReadWriteOnce'],
+              storageClassName: 'gp3',
+              resources: {
+                requests: {
+                  storage: resources.storage,
+                },
+              },
+            },
+          }],
         },
       };
 
       await this.appsV1Api.createNamespacedStatefulSet({ namespace, body: statefulSet });
-      logger.info(`StatefulSet created: ${name} in namespace ${namespace}`);
+      logger.info(`StatefulSet created: ${name} in namespace ${namespace} with persistent storage`);
     } catch (error) {
       throw new KubernetesError(`Failed to create StatefulSet ${name}`, error);
     }

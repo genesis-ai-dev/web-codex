@@ -874,8 +874,10 @@ router.delete('/workspaces/:workspaceId',
           await kubernetesService.deleteStatefulSet(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
           await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
-          // TODO: Re-enable PVC deletion once storage is configured
-          // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+
+          // Delete PVC created by StatefulSet volumeClaimTemplates
+          // StatefulSet volumeClaimTemplates create PVCs with naming pattern: <volumeName>-<statefulSetName>-<ordinal>
+          await kubernetesService.deleteNamespacedPVC(`workspace-storage-${k8sName}-0`, namespace);
 
           // Remove this workspace from the nginx proxy ConfigMap
           await kubernetesService.removeWorkspaceFromNginxProxyConfig(namespace, k8sName);

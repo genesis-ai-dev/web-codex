@@ -204,8 +204,7 @@ router.post('/',
         // Create secret with code-server config
         await kubernetesService.createCodeServerSecret(namespace, k8sName, password);
 
-        // TODO: Re-enable PVC creation once storage is configured
-        // await kubernetesService.createPVC(namespace, k8sName, resources.storage);
+        // Create StatefulSet with persistent storage (PVC created automatically via volumeClaimTemplates)
         await kubernetesService.createStatefulSet(namespace, k8sName, workspace.image, resources);
         await kubernetesService.createService(namespace, k8sName);
 
@@ -367,8 +366,10 @@ router.delete('/:workspaceId',
           await kubernetesService.deleteStatefulSet(namespace, k8sName);
           await kubernetesService.deleteNamespacedService(k8sName, namespace);
           await kubernetesService.deleteNamespacedSecret(`${k8sName}-config`, namespace);
-          // TODO: Re-enable PVC deletion once storage is configured
-          // await kubernetesService.deleteNamespacedPVC(`${k8sName}-pvc`, namespace);
+
+          // Delete PVC created by StatefulSet volumeClaimTemplates
+          // StatefulSet volumeClaimTemplates create PVCs with naming pattern: <volumeName>-<statefulSetName>-<ordinal>
+          await kubernetesService.deleteNamespacedPVC(`workspace-storage-${k8sName}-0`, namespace);
 
           // Remove this workspace from the nginx proxy ConfigMap
           await kubernetesService.removeWorkspaceFromNginxProxyConfig(namespace, k8sName);
