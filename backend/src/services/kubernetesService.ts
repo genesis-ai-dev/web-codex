@@ -1073,7 +1073,8 @@ cert: false`;
 
     // Check PVC
     try {
-      const pvcName = `${name}-pvc`;
+      // StatefulSet volumeClaimTemplates create PVCs with naming pattern: <volumeName>-<statefulSetName>-<ordinal>
+      const pvcName = `workspace-storage-${name}-0`;
       const pvc = await this.coreV1Api.readNamespacedPersistentVolumeClaim({ name: pvcName, namespace });
       const phase = pvc.status?.phase;
 
