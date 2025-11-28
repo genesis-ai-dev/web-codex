@@ -429,6 +429,14 @@ const ComponentHealthCard: React.FC<ComponentHealthCardProps> = ({ component }) 
 
   const getIcon = () => {
     switch (component.type) {
+      case 'statefulset':
+        return (
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12v5" />
+            <circle cx="12" cy="17" r="1" fill="currentColor" />
+          </svg>
+        );
       case 'deployment':
         return (
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
