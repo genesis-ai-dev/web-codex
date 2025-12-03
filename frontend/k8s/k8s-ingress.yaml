@@ -18,6 +18,8 @@ spec:
   hostnames:
   - "test.denhertog.ca"
   - "loadbalancer.frontierrnd.com"
+  - "web.codexeditor.app"
+  - "preview.codexeditor.app"
   rules:
   - matches:
     - path:
