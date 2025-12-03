@@ -1347,7 +1347,7 @@ cert: false`;
   async createOrUpdateHTTPRoute(
     namespace: string,
     pathPrefix: string,
-    hostnames: string[] = ['test.denhertog.ca', 'loadbalancer.frontierrnd.com']
+    hostnames: string[] = ['test.denhertog.ca', 'loadbalancer.frontierrnd.com', 'web.codexeditor.app', 'preview.codexeditor.app']
   ): Promise<void> {
     try {
       const httpRouteName = `${namespace}-httproute`;
